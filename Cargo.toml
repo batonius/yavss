@@ -1,0 +1,10 @@
+[package]
+name = "yavss"
+version = "0.1.0"
+authors = ["baton <batonius.kirov@gmail.com>"]
+
+[dependencies]
+glium = "0.16"
+cgmath = "0.12"
+gilrs = { path = "../gilrs" }
+image = "0.12"
