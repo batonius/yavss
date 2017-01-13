@@ -12,7 +12,7 @@ use glium::glutin;
 use std::time::Duration;
 
 const WINDOW_WIDTH: u32 = 800;
-const WINDOW_HEIGHT: u32 = 600;
+const WINDOW_HEIGHT: u32 = 800;
 const FRAME_RATE: u64 = 60;
 
 fn create_window() -> glium::backend::glutin_backend::GlutinFacade {
@@ -31,7 +31,7 @@ fn main() {
     use std::time::Instant;
 
     let frame_rate_loop_duration = Duration::from_millis(1_000u64 / FRAME_RATE);
-    let mut scene = scene::Scene::new(scene::SpeedValues::new(0.25, 0.25, 0.06));
+    let mut scene = scene::Scene::new(scene::SpeedValues::new(0.25, 0.25, 0.15));
     let window = create_window();
     let mut input_poller = input::InputPoller::new(window.get_window()
         .expect("Can't get window ref"));
