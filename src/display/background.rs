@@ -1,90 +1,57 @@
 use glium;
-use super::common::load_png_texture;
 
-const BACKGROUND_FRAMES_COUNT: usize = 4;
-const BACKGROUND_TILES_COUNT: usize = 10;
+const BACKGROUND_TILES_COUNT: usize = 1;
 
-const BACKGROUND_VERTEX_SHADER: &'static str = r"
-#version 150 core
-in vec2 in_pos;
-in vec2 in_st;
+const BACKGROUND_VERTEX_SHADER: &'static str = include_str!("../shaders/v_background.glsl");
 
-out vec2 out_st;
-
-void main() {
-    out_st = in_st;
-    gl_Position = vec4(in_pos, 0.0, 1.0);
-}";
-
-const BACKGROUND_FRAGMENT_SHADER: &'static str = r"
-#version 150 core
-in vec2 out_st;
-
-out vec4 out_color;
-
-uniform sampler2D t_background;
-uniform mat4 u_transform;
-uniform float u_background_frames_count;
-
-
-void main() {
-   float y = out_st.y;
-   vec4 st = u_transform * vec4(out_st, 0.0, 1.0);
-   y = st.y - y;
-   float speedup[5] = float[](0.0, 0.3, 0.6, -20.0, -30.0);
-
-   for(int i=0; i<u_background_frames_count; ++i) {
-      vec4 stt = vec4(st.x, st.y - speedup[i] * y, st.zw);
-      float f = fract(stt.x);
-      vec2 t_coord = vec2((f + i)/u_background_frames_count, stt.yzw);
-      out_color = texture(t_background, t_coord);
-      if (out_color.w == 1.0) {
-          break;
-      }
-   }
-}";
+const BACKGROUND_FRAGMENT_SHADER: &'static str = include_str!("../shaders/f_background.glsl");
 
 #[derive(Copy, Clone)]
 struct BackgroundVertex {
-    in_pos: [f32; 2],
-    in_st: [f32; 2],
+    v_pos: [f32; 2],
+    v_tex_coord: [f32; 2],
 }
 
-implement_vertex!(BackgroundVertex, in_pos, in_st);
+implement_vertex!(BackgroundVertex, v_pos, v_tex_coord);
 
-const BACKGROUND_VERTICES: [BackgroundVertex; 4] = [BackgroundVertex {
-                                                        in_pos: [-1.0, 1.0],
-                                                        in_st: [0.0, 0.0],
-                                                    },
-                                                    BackgroundVertex {
-                                                        in_pos: [1.0, 1.0],
-                                                        in_st: [BACKGROUND_TILES_COUNT as f32, 0.0],
-                                                    },
-                                                    BackgroundVertex {
-                                                        in_pos: [1.0, -1.0],
-                                                        in_st: [BACKGROUND_TILES_COUNT as f32,
-                                                                BACKGROUND_TILES_COUNT as f32],
-                                                    },
-                                                    BackgroundVertex {
-                                                        in_pos: [-1.0, -1.0],
-                                                        in_st: [0.0, BACKGROUND_TILES_COUNT as f32],
-                                                    }];
+const BACKGROUND_VERTICES: [BackgroundVertex; 4] =
+    [BackgroundVertex {
+         v_pos: [-1.0, 1.0],
+         v_tex_coord: [0.0, 0.0],
+     },
+     BackgroundVertex {
+         v_pos: [1.0, 1.0],
+         v_tex_coord: [BACKGROUND_TILES_COUNT as f32, 0.0],
+     },
+     BackgroundVertex {
+         v_pos: [1.0, -1.0],
+         v_tex_coord: [BACKGROUND_TILES_COUNT as f32, BACKGROUND_TILES_COUNT as f32],
+     },
+     BackgroundVertex {
+         v_pos: [-1.0, -1.0],
+         v_tex_coord: [0.0, BACKGROUND_TILES_COUNT as f32],
+     }];
 
 const BACKGROUND_INDICES: [u16; 6] = [0, 1, 2, 0, 3, 2];
 
 pub struct Background {
-    texture: glium::texture::SrgbTexture2d,
     shape: glium::VertexBuffer<BackgroundVertex>,
     indices: glium::IndexBuffer<u16>,
     program: glium::Program,
+    sprite_offset: [f32; 2],
+    sprite_dimensions: [f32; 2],
+    frames_count: u32,
 }
 
 impl Background {
-    pub fn new<F>(facade: &F) -> Background
+    pub fn new<F>(facade: &F, sprites_data: &::sprites_data::SpritesData) -> Background
         where F: glium::backend::Facade
     {
+        let background_sprite_data =
+            sprites_data.get_sprite_data(::sprites_data::SpriteObject::Background)
+                .expect("Can't get background sprite");
+        println!("{:?}", background_sprite_data);
         Background {
-            texture: load_png_texture(facade, include_bytes!("../../data/background.png")),
             shape: glium::vertex::VertexBuffer::new(facade, &BACKGROUND_VERTICES)
                 .expect("Can't initialize backgroudn vertex buffer"),
             indices: glium::index::IndexBuffer::new(facade,
@@ -96,10 +63,16 @@ impl Background {
                                                  BACKGROUND_FRAGMENT_SHADER,
                                                  None)
                 .expect("Can't initialize program"),
+            sprite_offset: background_sprite_data.get_offset(),
+            sprite_dimensions: background_sprite_data.get_dimensions(),
+            frames_count: background_sprite_data.get_frames_count(),
         }
     }
 
-    pub fn render<S>(&self, surface: &mut S, position: f32)
+    pub fn render<S>(&self,
+                     surface: &mut S,
+                     sprites_texture: &glium::texture::SrgbTexture2d,
+                     position: f32)
         where S: glium::Surface
     {
         use cgmath;
@@ -108,11 +81,13 @@ impl Background {
             cgmath::Matrix4::from_translation(cgmath::vec3(0.0, -position, 0.0)).into();
         let uniforms = uniform! {
             u_transform: u_translation,
-            t_background: self.texture.sampled().anisotropy(1)
+            t_sprites: sprites_texture.sampled().anisotropy(1)
                 .wrap_function(glium::uniforms::SamplerWrapFunction::Repeat)
                 .magnify_filter(glium::uniforms::MagnifySamplerFilter::Nearest)
                 .minify_filter(glium::uniforms::MinifySamplerFilter::Nearest),
-            u_background_frames_count: (BACKGROUND_FRAMES_COUNT as f32),
+            u_frames_count: self.frames_count as f32,
+            u_offset: self.sprite_offset,
+            u_dimensions: self.sprite_dimensions,
         };
         surface.draw(&self.shape,
                   &self.indices,

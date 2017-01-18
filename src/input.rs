@@ -12,7 +12,12 @@ struct InputStatus {
 
 impl Default for InputStatus {
     fn default() -> InputStatus {
-        InputStatus {x_move: 0.0, y_move: 0.0, fire_button: false, exit: false }
+        InputStatus {
+            x_move: 0.0,
+            y_move: 0.0,
+            fire_button: false,
+            exit: false,
+        }
     }
 }
 
@@ -30,7 +35,11 @@ pub struct InputPoller<'a> {
 
 impl<'a> InputPoller<'a> {
     pub fn new(win: WinRef<'a>) -> InputPoller<'a> {
-        InputPoller { status: Default::default(), gilrs: Gilrs::new(), win: win }
+        InputPoller {
+            status: Default::default(),
+            gilrs: Gilrs::new(),
+            win: win,
+        }
     }
 
     pub fn poll_events(&mut self) {

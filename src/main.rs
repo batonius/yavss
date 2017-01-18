@@ -5,6 +5,7 @@ extern crate cgmath;
 extern crate image;
 
 mod input;
+mod sprites_data;
 mod scene;
 mod display;
 
@@ -13,6 +14,8 @@ use std::time::Duration;
 
 const WINDOW_WIDTH: u32 = 800;
 const WINDOW_HEIGHT: u32 = 800;
+const VIRTUAL_WIDHT: u32 = 128;
+const VIRTUAL_HEIGHT: u32 = 128;
 const FRAME_RATE: u64 = 60;
 
 fn create_window() -> glium::backend::glutin_backend::GlutinFacade {
@@ -31,13 +34,13 @@ fn main() {
     use std::time::Instant;
 
     let frame_rate_loop_duration = Duration::from_millis(1_000u64 / FRAME_RATE);
-    let mut scene = scene::Scene::new(scene::SpeedValues::new(0.25, 0.25, 0.15));
+    let mut scene = scene::Scene::new(scene::SpeedValues::new(0.75, 0.75, 0.15, 2.0));
     let window = create_window();
     let mut input_poller = input::InputPoller::new(window.get_window()
         .expect("Can't get window ref"));
     let mut instant = Instant::now();
-    let renderer = display::Renderer::new(&window);
-    let mut counter = 0;
+    let sprites = sprites_data::SpritesData::new((VIRTUAL_WIDHT, VIRTUAL_HEIGHT));
+    let renderer = display::Renderer::new(&window, &sprites);
 
     'main_loop: loop {
         let mut new_instant = Instant::now();
@@ -53,12 +56,6 @@ fn main() {
             break 'main_loop;
         }
         scene.tick(&input_poller, duration);
-        let mut target = window.draw();
-        renderer.render(&mut target, &scene);
-        target.finish().expect("Can't draw on a surface");
-        counter += 1;
-        if counter % 60 == 0 {
-            println!("{:#?}", scene);
-        }
+        renderer.render(&window, &scene);
     }
 }
