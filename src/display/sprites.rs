@@ -77,9 +77,9 @@ impl Sprites {
             for sprite_object in [SpriteObject::Player, SpriteObject::Bullet].into_iter() {
                 let sprite_data = sprites_data.get_sprite_data(*sprite_object)
                     .expect("Can't get sprite data");
-                sizes_map[*sprite_object as usize] = sprite_data.get_size();
-                offsets_map[*sprite_object as usize] = sprite_data.get_offset();
-                dimensions_map[*sprite_object as usize] = sprite_data.get_dimensions();
+                sizes_map[*sprite_object as usize] = sprite_data.get_virtual_size();
+                offsets_map[*sprite_object as usize] = sprite_data.get_image_offset();
+                dimensions_map[*sprite_object as usize] = sprite_data.get_image_size();
             }
         }
         Sprites {

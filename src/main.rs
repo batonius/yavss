@@ -34,12 +34,13 @@ fn main() {
     use std::time::Instant;
 
     let frame_rate_loop_duration = Duration::from_millis(1_000u64 / FRAME_RATE);
-    let mut scene = scene::Scene::new(scene::SpeedValues::new(0.75, 0.75, 0.15, 2.0));
+    let sprites = sprites_data::SpritesData::new((VIRTUAL_WIDHT, VIRTUAL_HEIGHT));
+    let mut scene = scene::Scene::new(scene::SpeedValues::new(0.75, 0.75, 0.15, 2.0),
+                                      &sprites);
     let window = create_window();
     let mut input_poller = input::InputPoller::new(window.get_window()
         .expect("Can't get window ref"));
     let mut instant = Instant::now();
-    let sprites = sprites_data::SpritesData::new((VIRTUAL_WIDHT, VIRTUAL_HEIGHT));
     let renderer = display::Renderer::new(&window, &sprites);
 
     'main_loop: loop {

@@ -13,23 +13,23 @@ pub enum SpriteObject {
 
 #[derive(Debug)]
 pub struct SpriteData {
-    offset: [f32; 2],
-    dimensions: [f32; 2],
-    size: [f32; 2],
+    image_offset: [f32; 2],
+    image_size: [f32; 2],
+    virtual_size: [f32; 2],
     frames_count: u32,
 }
 
 impl SpriteData {
-    pub fn get_offset(&self) -> [f32; 2] {
-        self.offset
+    pub fn get_image_offset(&self) -> [f32; 2] {
+        self.image_offset
     }
 
-    pub fn get_dimensions(&self) -> [f32; 2] {
-        self.dimensions
+    pub fn get_image_size(&self) -> [f32; 2] {
+        self.image_size
     }
 
-    pub fn get_size(&self) -> [f32; 2] {
-        self.size
+    pub fn get_virtual_size(&self) -> [f32; 2] {
+        self.virtual_size
     }
 
     pub fn get_frames_count(&self) -> u32 {
@@ -37,9 +37,10 @@ impl SpriteData {
     }
 }
 
+#[derive(Debug)]
 pub struct SpritesData {
     image_buffer: Vec<u8>,
-    dimensions: (u32, u32),
+    image_size: (u32, u32),
     sprites: HashMap<SpriteObject, SpriteData>,
 }
 
@@ -72,12 +73,12 @@ fn parse_sprites_descr(virtual_dimensions: (u32, u32),
             .expect("Can't parse an int from sprite description");
         result.insert(object,
                       SpriteData {
-                          offset: [offset_x as f32 / image_dimensions.0 as f32,
+                          image_offset: [offset_x as f32 / image_dimensions.0 as f32,
                                    (image_dimensions.1 - offset_y - height) as f32 /
                                    image_dimensions.1 as f32],
-                          dimensions: [width as f32 / image_dimensions.0 as f32,
+                          image_size: [width as f32 / image_dimensions.0 as f32,
                                        height as f32 / image_dimensions.1 as f32],
-                          size: [width as f32 / virtual_dimensions.0 as f32,
+                          virtual_size: [width as f32 / virtual_dimensions.0 as f32,
                                  height as f32 / virtual_dimensions.1 as f32],
                           frames_count: frames_count,
                       });
@@ -97,7 +98,7 @@ impl SpritesData {
 
         SpritesData {
             image_buffer: image_buffer.into_raw(),
-            dimensions: image_dimensions,
+            image_size: image_dimensions,
             sprites: parse_sprites_descr(virtual_dimensions, image_dimensions),
         }
     }
@@ -110,7 +111,7 @@ impl SpritesData {
         self.image_buffer.clone()
     }
 
-    pub fn get_dimensions(&self) -> (u32, u32) {
-        self.dimensions
+    pub fn get_image_size(&self) -> (u32, u32) {
+        self.image_size
     }
 }

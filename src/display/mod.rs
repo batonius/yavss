@@ -16,7 +16,7 @@ impl Renderer {
     {
         let glium_image =
             glium::texture::RawImage2d::from_raw_rgba_reversed(sprites_data.get_image_buffer(),
-                                                               sprites_data.get_dimensions());
+                                                               sprites_data.get_image_size());
         let texture = glium::texture::SrgbTexture2d::new(facade, glium_image)
             .expect("Can't create texture");
         Renderer {

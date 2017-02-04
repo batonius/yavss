@@ -63,8 +63,8 @@ impl Background {
                                                  BACKGROUND_FRAGMENT_SHADER,
                                                  None)
                 .expect("Can't initialize program"),
-            sprite_offset: background_sprite_data.get_offset(),
-            sprite_dimensions: background_sprite_data.get_dimensions(),
+            sprite_offset: background_sprite_data.get_image_offset(),
+            sprite_dimensions: background_sprite_data.get_image_size(),
             frames_count: background_sprite_data.get_frames_count(),
         }
     }

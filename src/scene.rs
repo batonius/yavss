@@ -1,5 +1,6 @@
 use std::time::Duration;
 use input::InputPoller;
+use sprites_data::{SpriteObject, SpritesData};
 
 type CoordValue = f32;
 type Speed = f32; //Screens/s
@@ -54,7 +55,8 @@ impl SpeedValues {
 }
 
 #[derive(Debug)]
-pub struct Scene {
+pub struct Scene<'a> {
+    sprites_data: &'a SpritesData,
     speeds: SpeedValues,
     background_position: f32,
     player_position: Position,
@@ -62,14 +64,15 @@ pub struct Scene {
     bullets_frame: f32,
 }
 
-impl Scene {
-    pub fn new(speeds: SpeedValues) -> Scene {
+impl<'a> Scene<'a> {
+    pub fn new(speeds: SpeedValues, sprites_data: &'a SpritesData) -> Scene<'a> {
         Scene {
             speeds: speeds,
             background_position: 0.0,
             player_position: (0.5, 0.2),
             player_state: PlayerState::Normal,
             bullets_frame: 0.0,
+            sprites_data: sprites_data,
         }
     }
 
@@ -89,23 +92,29 @@ impl Scene {
         let result = vec![SceneObject {
                               object_type: ObjectType::Player(self.player_state),
                               pos: self.player_position,
-                              angle: -self.bullets_frame * 3.0,
+                              angle: 0.0,
                           },
                           SceneObject {
                               object_type: ObjectType::Bullet((self.bullets_frame as u32) % 4),
                               pos: (0.5, 0.7),
-                              angle: self.bullets_frame * 3.0,
+                              angle: 0.0,
                           }];
         return result;
     }
 
     fn move_player(&mut self, input: &InputPoller, duration_s: f32) {
+        let player_virtual_size = self.sprites_data
+            .get_sprite_data(SpriteObject::Player)
+            .expect("Can't get player sprite")
+            .get_virtual_size();
         let (mut x, mut y) = self.player_position;
         let x_move = input.x_move();
         x += x_move * self.speeds.x_speed * (duration_s as CoordValue);
-        x = x.min(MAX_X_VALUE).max(MIN_X_VALUE);
+        x = x.min(MAX_X_VALUE - player_virtual_size[0] / 2.0)
+            .max(MIN_X_VALUE + player_virtual_size[0] / 2.0);
         y += input.y_move() * self.speeds.y_speed * (duration_s as CoordValue);
-        y = y.min(MAX_Y_VALUE).max(MIN_Y_VALUE);
+        y = y.min(MAX_Y_VALUE - player_virtual_size[1] / 2.0)
+            .max(MIN_Y_VALUE + player_virtual_size[1] / 2.0);
         self.player_position = (x, y);
         if x_move < -0.2 {
             self.player_state = PlayerState::TiltedLeft;
