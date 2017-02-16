@@ -6,8 +6,12 @@ type AxisValue = f32;
 struct InputState {
     x_move: AxisValue,
     y_move: AxisValue,
-    fire_button: bool,
+    fire_is_pressed: bool,
     exit: bool,
+    left_is_pressed: bool,
+    right_is_pressed: bool,
+    down_is_pressed: bool,
+    up_is_pressed: bool,
 }
 
 impl Default for InputState {
@@ -15,8 +19,12 @@ impl Default for InputState {
         InputState {
             x_move: 0.0,
             y_move: 0.0,
-            fire_button: false,
+            fire_is_pressed: false,
             exit: false,
+            left_is_pressed: false,
+            right_is_pressed: false,
+            down_is_pressed: false,
+            up_is_pressed: false,
         }
     }
 }
@@ -51,9 +59,49 @@ impl<'a> InputPoller<'a> {
 
         for event in self.win.poll_events() {
             match event {
-                Event::KeyboardInput(glutin::ElementState::Pressed,
-                                     _,
-                                     Some(glutin::VirtualKeyCode::Escape)) |
+                Event::KeyboardInput(glutin::ElementState::Released, _, Some(key_code)) => {
+                    match key_code {
+                        glutin::VirtualKeyCode::W => {
+                            self.state.up_is_pressed = false;
+                        }
+                        glutin::VirtualKeyCode::A => {
+                            self.state.left_is_pressed = false;
+                        }
+                        glutin::VirtualKeyCode::S => {
+                            self.state.down_is_pressed = false;
+                        }
+                        glutin::VirtualKeyCode::D => {
+                            self.state.right_is_pressed = false;
+                        }
+                        glutin::VirtualKeyCode::Space => {
+                            self.state.fire_is_pressed = false;
+                        }
+                        _ => {}
+                    }
+                }
+                Event::KeyboardInput(glutin::ElementState::Pressed, _, Some(key_code)) => {
+                    match key_code {
+                        glutin::VirtualKeyCode::Escape => {
+                            self.state.exit = true;
+                        }
+                        glutin::VirtualKeyCode::W => {
+                            self.state.up_is_pressed = true;
+                        }
+                        glutin::VirtualKeyCode::A => {
+                            self.state.left_is_pressed = true;
+                        }
+                        glutin::VirtualKeyCode::S => {
+                            self.state.down_is_pressed = true;
+                        }
+                        glutin::VirtualKeyCode::D => {
+                            self.state.right_is_pressed = true;
+                        }
+                        glutin::VirtualKeyCode::Space => {
+                            self.state.fire_is_pressed = true;
+                        }
+                        _ => {}
+                    }
+                }
                 Event::Closed => {
                     self.state.exit = true;
                 }
@@ -61,11 +109,28 @@ impl<'a> InputPoller<'a> {
             }
         }
 
-        for _ in self.gilrs.poll_events() {}
-
-        self.state.x_move = self.gilrs[0].value(gilrs::Axis::LeftStickX);
-        self.state.y_move = self.gilrs[0].value(gilrs::Axis::LeftStickY);
-        self.state.fire_button = self.gilrs[0].is_pressed(gilrs::Button::South);
+        if self.gilrs.gamepads().count() != 0 {
+            for _ in self.gilrs.poll_events() {}
+            self.state.x_move = self.gilrs[0].value(gilrs::Axis::LeftStickX);
+            self.state.y_move = self.gilrs[0].value(gilrs::Axis::LeftStickY);
+            self.state.fire_is_pressed = self.gilrs[0].is_pressed(gilrs::Button::South);
+        } else {
+            self.state.x_move = 0.0;
+            if self.state.right_is_pressed {
+                self.state.x_move += 0.5;
+            }
+            if self.state.left_is_pressed {
+                self.state.x_move -= 0.5;
+            }
+            self.state.y_move = 0.0;
+            if self.state.up_is_pressed {
+                self.state.y_move += 0.5;
+            }
+            if self.state.down_is_pressed {
+                self.state.y_move -= 0.5;
+            }
+            self.state.fire_is_pressed = self.state.fire_is_pressed;
+        }
     }
 
     pub fn x_move(&self) -> AxisValue {
@@ -80,7 +145,7 @@ impl<'a> InputPoller<'a> {
         self.state.exit
     }
 
-    pub fn fire_button(&self) -> bool {
-        self.state.fire_button
+    pub fn fire_is_pressed(&self) -> bool {
+        self.state.fire_is_pressed
     }
 }
