@@ -41,7 +41,7 @@ fn main() {
     let mut input_poller = input::InputPoller::new(window.get_window()
         .expect("Can't get window ref"));
     let mut instant = Instant::now();
-    let renderer = display::Renderer::new(&window, &sprites);
+    let mut renderer = display::Renderer::new(&window, &sprites);
 
     'main_loop: loop {
         let mut new_instant = Instant::now();

@@ -92,12 +92,12 @@ impl<'a> Scene<'a> {
         let result = vec![SceneObject {
                               object_type: ObjectType::Player(self.player_state),
                               pos: self.player_position,
-                              angle: 0.0,
+                              angle: -self.bullets_frame * 30.0,
                           },
                           SceneObject {
                               object_type: ObjectType::Bullet((self.bullets_frame as u32) % 4),
                               pos: (0.5, 0.7),
-                              angle: 0.0,
+                              angle: self.bullets_frame * 30.0,
                           }];
         return result;
     }

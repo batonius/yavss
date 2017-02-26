@@ -3,11 +3,13 @@ use scene;
 
 mod background;
 mod sprites;
+mod postprocessor;
 
 pub struct Renderer {
     background: background::Background,
     sprites: sprites::Sprites,
     sprites_texture: glium::texture::SrgbTexture2d,
+    postprocessor: postprocessor::PostProcessor,
 }
 
 impl Renderer {
@@ -23,19 +25,28 @@ impl Renderer {
             background: background::Background::new(facade, sprites_data),
             sprites: sprites::Sprites::new(facade, sprites_data),
             sprites_texture: texture,
+            postprocessor: postprocessor::PostProcessor::new(facade,
+                                                             sprites_data.get_virtual_dimensions()),
         }
     }
 
-    pub fn render(&self,
+    pub fn render(&mut self,
                   window: &glium::backend::glutin_backend::GlutinFacade,
                   scene: &scene::Scene) {
         use glium::Surface;
         let mut surface = window.draw();
-        surface.clear_color(0.5, 0.5, 0.0, 1.0);
-        self.background.render(&mut surface, &self.sprites_texture,
-                               scene.background_position());
-        self.sprites.render(window, &mut surface, &self.sprites_texture,
-                            &scene.get_scene_objects());
+        {
+            let mut framebuffer = self.postprocessor.as_surface();
+            framebuffer.clear_color(0.5, 0.5, 0.0, 1.0);
+            self.background.render(&mut framebuffer,
+                                   &self.sprites_texture,
+                                   scene.background_position());
+            self.sprites.render(window,
+                                &mut framebuffer,
+                                &self.sprites_texture,
+                                &scene.get_scene_objects());
+        }
+        self.postprocessor.render(&mut surface);
         surface.finish().expect("Can't draw on a surface");
     }
 }
