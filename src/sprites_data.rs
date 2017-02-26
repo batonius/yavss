@@ -42,7 +42,6 @@ pub struct SpritesData {
     image_buffer: Vec<u8>,
     image_size: (u32, u32),
     sprites: HashMap<SpriteObject, SpriteData>,
-    virtual_dimensions: (u32, u32),
 }
 
 fn parse_sprite_name(name: &str) -> Option<SpriteObject> {
@@ -101,7 +100,6 @@ impl SpritesData {
             image_buffer: image_buffer.into_raw(),
             image_size: image_dimensions,
             sprites: parse_sprites_descr(virtual_dimensions, image_dimensions),
-            virtual_dimensions: virtual_dimensions,
         }
     }
 
@@ -115,9 +113,5 @@ impl SpritesData {
 
     pub fn get_image_size(&self) -> (u32, u32) {
         self.image_size
-    }
-
-    pub fn get_virtual_dimensions(&self) -> (u32, u32) {
-        self.virtual_dimensions
     }
 }

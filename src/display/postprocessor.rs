@@ -36,6 +36,7 @@ pub struct PostProcessor {
     texture: glium::texture::Texture2d,
     shape: glium::VertexBuffer<PostprocessorVertex>,
     indices: glium::IndexBuffer<u16>,
+    virtual_dimensions: (u32, u32),
 }
 
 impl PostProcessor {
@@ -56,28 +57,27 @@ impl PostProcessor {
                                                     glium::index::PrimitiveType::TrianglesList,
                                                     &POSTPROCESSOR_INDICES)
                 .expect("Can't build index buffer"),
+            virtual_dimensions: dimentions,
         }
     }
 
-    // pub fn draw<F, S, R>(&mut self, f: F) -> R
-    //     where F: FnOnce(&mut S) -> R,
-    //           S: glium::Surface
-    // {
-    //     f(&mut self.texture.as_surface())
-    // }
-
-    pub fn as_surface<'a>(&'a self) -> glium::framebuffer::SimpleFrameBuffer<'a> {
-        self.texture.as_surface()
+    pub fn draw<F, R>(&self, f: F) -> R
+        where F: FnOnce(&mut glium::framebuffer::SimpleFrameBuffer) -> R
+    {
+        f(&mut self.texture.as_surface())
     }
 
     pub fn render<S>(&self, surface: &mut S)
         where S: glium::Surface
     {
         let uniforms = uniform! {
-            t_post: self.texture.sampled().anisotropy(1)
+            t_post: self.texture.sampled()
+                .anisotropy(1)
                 .wrap_function(glium::uniforms::SamplerWrapFunction::Repeat)
                 .magnify_filter(glium::uniforms::MagnifySamplerFilter::Nearest)
                 .minify_filter(glium::uniforms::MinifySamplerFilter::Nearest),
+            u_virtual_width: self.virtual_dimensions.0,
+            u_virtual_height: self.virtual_dimensions.1,
         };
         surface.draw(&self.shape,
                   &self.indices,

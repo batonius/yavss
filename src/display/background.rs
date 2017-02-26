@@ -1,6 +1,6 @@
 use glium;
 
-const BACKGROUND_TILES_COUNT: usize = 1;
+const BACKGROUND_TILES_COUNT: usize = 3;
 
 const BACKGROUND_VERTEX_SHADER: &'static str = include_str!("../shaders/v_background.glsl");
 

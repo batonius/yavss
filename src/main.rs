@@ -14,8 +14,8 @@ use std::time::Duration;
 
 const WINDOW_WIDTH: u32 = 800;
 const WINDOW_HEIGHT: u32 = 800;
-const VIRTUAL_WIDHT: u32 = 128;
-const VIRTUAL_HEIGHT: u32 = 128;
+const VIRTUAL_WIDHT: u32 = 200;
+const VIRTUAL_HEIGHT: u32 = 200;
 const FRAME_RATE: u64 = 60;
 
 fn create_window() -> glium::backend::glutin_backend::GlutinFacade {
@@ -33,15 +33,18 @@ fn create_window() -> glium::backend::glutin_backend::GlutinFacade {
 fn main() {
     use std::time::Instant;
 
+    let virtual_dimensions = (VIRTUAL_WIDHT, VIRTUAL_HEIGHT);
     let frame_rate_loop_duration = Duration::from_millis(1_000u64 / FRAME_RATE);
-    let sprites = sprites_data::SpritesData::new((VIRTUAL_WIDHT, VIRTUAL_HEIGHT));
-    let mut scene = scene::Scene::new(scene::SpeedValues::new(0.75, 0.75, 0.15, 2.0),
-                                      &sprites);
+    let sprites = sprites_data::SpritesData::new(virtual_dimensions);
+    let mut scene = scene::Scene::new(scene::SpeedValues::new(0.75, 0.75, 0.15, 2.0), &sprites);
     let window = create_window();
     let mut input_poller = input::InputPoller::new(window.get_window()
         .expect("Can't get window ref"));
     let mut instant = Instant::now();
-    let mut renderer = display::Renderer::new(&window, &sprites);
+    let mut renderer = display::Renderer::new(&window, &sprites, virtual_dimensions);
+    let mut frame_counter = 0usize;
+    let mut frame_counter_instant = Instant::now();
+    const FRAMES_TO_COUNT: usize = 600;
 
     'main_loop: loop {
         let mut new_instant = Instant::now();
@@ -58,5 +61,16 @@ fn main() {
         }
         scene.tick(&input_poller, duration);
         renderer.render(&window, &scene);
+        frame_counter += 1;
+        if frame_counter >= FRAMES_TO_COUNT {
+            let new_frame_instant = Instant::now();
+            let duration = new_frame_instant - frame_counter_instant;
+            println!("{} fps",
+                     frame_counter as f32 /
+                     (duration.as_secs() as f32 +
+                      duration.subsec_nanos() as f32 / 1_000_000_000.0));
+            frame_counter = 0;
+            frame_counter_instant = Instant::now();
+        }
     }
 }

@@ -13,7 +13,10 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new<F>(facade: &F, sprites_data: &::sprites_data::SpritesData) -> Renderer
+    pub fn new<F>(facade: &F,
+                  sprites_data: &::sprites_data::SpritesData,
+                  virtual_dimensions: (u32, u32))
+                  -> Renderer
         where F: glium::backend::Facade
     {
         let glium_image =
@@ -25,8 +28,7 @@ impl Renderer {
             background: background::Background::new(facade, sprites_data),
             sprites: sprites::Sprites::new(facade, sprites_data),
             sprites_texture: texture,
-            postprocessor: postprocessor::PostProcessor::new(facade,
-                                                             sprites_data.get_virtual_dimensions()),
+            postprocessor: postprocessor::PostProcessor::new(facade, virtual_dimensions),
         }
     }
 
@@ -35,17 +37,16 @@ impl Renderer {
                   scene: &scene::Scene) {
         use glium::Surface;
         let mut surface = window.draw();
-        {
-            let mut framebuffer = self.postprocessor.as_surface();
+        self.postprocessor.draw(|framebuffer| {
             framebuffer.clear_color(0.5, 0.5, 0.0, 1.0);
-            self.background.render(&mut framebuffer,
+            self.background.render(framebuffer,
                                    &self.sprites_texture,
                                    scene.background_position());
             self.sprites.render(window,
-                                &mut framebuffer,
+                                framebuffer,
                                 &self.sprites_texture,
                                 &scene.get_scene_objects());
-        }
+        });
         self.postprocessor.render(&mut surface);
         surface.finish().expect("Can't draw on a surface");
     }
