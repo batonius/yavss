@@ -38,21 +38,18 @@ pub struct SpeedValues {
     y_speed: Speed,
     bullet_blicking_speed: Speed,
     bullet_speed: Speed,
+    bullet_shooting_speed: Speed,
 }
 
-impl SpeedValues {
-    pub fn new(x_speed: Speed,
-               y_speed: Speed,
-               background_speed: Speed,
-               bullet_blicking_speed: Speed,
-               bullet_speed: Speed)
-               -> SpeedValues {
+impl Default for SpeedValues {
+    fn default() -> SpeedValues {
         SpeedValues {
-            x_speed: x_speed,
-            y_speed: y_speed,
-            background_speed: background_speed,
-            bullet_blicking_speed: bullet_blicking_speed,
-            bullet_speed: bullet_speed,
+            x_speed: 0.75,
+            y_speed: 0.75,
+            background_speed: 0.15,
+            bullet_blicking_speed: 2.0,
+            bullet_speed: 0.5,
+            bullet_shooting_speed: 0.2,
         }
     }
 }
@@ -65,11 +62,13 @@ pub struct Scene<'a> {
     player_position: Position,
     player_state: PlayerState,
     bullets_frame: f32,
+    bullets_timeout: f32,
     bullets: Vec<SceneObject>,
 }
 
 impl<'a> Scene<'a> {
     pub fn new(speeds: SpeedValues, sprites_data: &'a SpritesData) -> Scene<'a> {
+        let bullets_timeout = speeds.bullet_shooting_speed + 1.0;
         Scene {
             speeds: speeds,
             background_position: 0.0,
@@ -77,6 +76,7 @@ impl<'a> Scene<'a> {
             player_state: PlayerState::Normal,
             bullets_frame: 0.0,
             sprites_data: sprites_data,
+            bullets_timeout: bullets_timeout,
             bullets: vec![],
         }
     }
@@ -88,7 +88,7 @@ impl<'a> Scene<'a> {
     pub fn tick(&mut self, input: &InputPoller, duration: Duration) {
         let duration_s = (duration.as_secs() as f32) +
                          (duration.subsec_nanos() as f32 / 1_000_000_000f32);
-        self.process_input(input);
+        self.process_input(input, duration_s);
         self.move_player(input, duration_s);
         self.move_background(duration_s);
         self.move_bullets(duration_s);
@@ -105,8 +105,10 @@ impl<'a> Scene<'a> {
         result
     }
 
-    fn process_input(&mut self, input: &InputPoller) {
-        if input.fire_is_pressed() {
+    fn process_input(&mut self, input: &InputPoller, duration_s: f32) {
+        self.bullets_timeout += duration_s;
+        if input.fire_is_pressed() && self.bullets_timeout >= self.speeds.bullet_shooting_speed {
+            self.bullets_timeout = 0.0;
             self.bullets.push(SceneObject {
                 object_type: ObjectType::Bullet(0),
                 pos: self.player_position,

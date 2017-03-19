@@ -36,7 +36,7 @@ fn main() {
     let virtual_dimensions = (VIRTUAL_WIDHT, VIRTUAL_HEIGHT);
     let frame_rate_loop_duration = Duration::from_millis(1_000u64 / FRAME_RATE);
     let sprites = sprites_data::SpritesData::new(virtual_dimensions);
-    let mut scene = scene::Scene::new(scene::SpeedValues::new(0.75, 0.75, 0.15, 2.0, 0.5), &sprites);
+    let mut scene = scene::Scene::new(scene::SpeedValues::default(), &sprites);
     let window = create_window();
     let mut input_poller = input::InputPoller::new(window.get_window()
         .expect("Can't get window ref"));
