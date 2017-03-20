@@ -45,7 +45,7 @@ impl Renderer {
             self.sprites.render(window,
                                 framebuffer,
                                 &self.sprites_texture,
-                                &scene.get_scene_objects());
+                                &scene);
         });
         self.postprocessor.render(&mut surface);
         surface.finish().expect("Can't draw on a surface");

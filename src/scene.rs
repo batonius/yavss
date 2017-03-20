@@ -59,11 +59,46 @@ pub struct Scene<'a> {
     sprites_data: &'a SpritesData,
     speeds: SpeedValues,
     background_position: f32,
-    player_position: Position,
-    player_state: PlayerState,
+    player_scene_object: SceneObject,
     bullets_frame: f32,
     bullets_timeout: f32,
     bullets: Vec<SceneObject>,
+}
+
+pub struct SceneIterator<'a>
+{
+    bullets: <&'a Vec<SceneObject> as IntoIterator>::IntoIter,
+    player: &'a SceneObject,
+    empty: bool,
+}
+
+impl<'a> SceneIterator<'a>
+{
+    pub fn new<'b>(scene: &'a Scene<'b>) -> SceneIterator<'a>
+        where 'b: 'a
+    {
+        SceneIterator {
+            bullets: scene.bullets.iter(),
+            player: &scene.player_scene_object,
+            empty: false,
+        }
+    }
+}
+
+impl<'a> Iterator for SceneIterator<'a>
+{
+    type Item = &'a SceneObject;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.empty {
+            None
+        } else {
+            self.bullets.next().or_else(|| {
+                self.empty = true;
+                Some(self.player)
+            })
+        }
+    }
 }
 
 impl<'a> Scene<'a> {
@@ -72,8 +107,11 @@ impl<'a> Scene<'a> {
         Scene {
             speeds: speeds,
             background_position: 0.0,
-            player_position: (0.5, 0.2),
-            player_state: PlayerState::Normal,
+            player_scene_object: SceneObject {
+                object_type: ObjectType::Player(PlayerState::Normal),
+                pos: (0.5, 0.2),
+                angle: 0.0,
+            },
             bullets_frame: 0.0,
             sprites_data: sprites_data,
             bullets_timeout: bullets_timeout,
@@ -95,14 +133,8 @@ impl<'a> Scene<'a> {
         self.blink_bullet(duration_s);
     }
 
-    pub fn get_scene_objects(&self) -> Vec<SceneObject> {
-        let mut result = self.bullets.clone();
-        result.push(SceneObject {
-            object_type: ObjectType::Player(self.player_state),
-            pos: self.player_position,
-            angle: 0.0,
-        });
-        result
+    pub fn objects<'c>(&'c self) -> SceneIterator<'c> {
+        SceneIterator::new(self)
     }
 
     fn process_input(&mut self, input: &InputPoller, duration_s: f32) {
@@ -111,17 +143,17 @@ impl<'a> Scene<'a> {
             self.bullets_timeout = 0.0;
             self.bullets.push(SceneObject {
                 object_type: ObjectType::Bullet(0),
-                pos: self.player_position,
+                pos: self.player_scene_object.pos,
                 angle: 0.0f32,
             });
             self.bullets.push(SceneObject {
                 object_type: ObjectType::Bullet(0),
-                pos: self.player_position,
+                pos: self.player_scene_object.pos,
                 angle: -20.0f32,
             });
             self.bullets.push(SceneObject {
                 object_type: ObjectType::Bullet(0),
-                pos: self.player_position,
+                pos: self.player_scene_object.pos,
                 angle: 20.0f32,
             });
         }
@@ -132,7 +164,7 @@ impl<'a> Scene<'a> {
             .get_sprite_data(SpriteObject::Player)
             .expect("Can't get player sprite")
             .get_virtual_size();
-        let (mut x, mut y) = self.player_position;
+        let (mut x, mut y) = self.player_scene_object.pos;
         let x_move = input.x_move();
         x += x_move * self.speeds.x_speed * (duration_s as CoordValue);
         x = x.min(MAX_X_VALUE - player_virtual_size[0] / 2.0)
@@ -140,13 +172,13 @@ impl<'a> Scene<'a> {
         y += input.y_move() * self.speeds.y_speed * (duration_s as CoordValue);
         y = y.min(MAX_Y_VALUE - player_virtual_size[1] / 2.0)
             .max(MIN_Y_VALUE + player_virtual_size[1] / 2.0);
-        self.player_position = (x, y);
+        self.player_scene_object.pos = (x, y);
         if x_move < -0.2 {
-            self.player_state = PlayerState::TiltedLeft;
+            self.player_scene_object.object_type = ObjectType::Player(PlayerState::TiltedLeft);
         } else if x_move > 0.2 {
-            self.player_state = PlayerState::TiltedRight;
+            self.player_scene_object.object_type = ObjectType::Player(PlayerState::TiltedRight);
         } else {
-            self.player_state = PlayerState::Normal;
+            self.player_scene_object.object_type = ObjectType::Player(PlayerState::Normal);
         }
     }
 
