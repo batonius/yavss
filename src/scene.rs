@@ -72,8 +72,7 @@ pub struct SceneIterator<'a>
     empty: bool,
 }
 
-impl<'a> SceneIterator<'a>
-{
+impl<'a> SceneIterator<'a> {
     pub fn new<'b>(scene: &'a Scene<'b>) -> SceneIterator<'a>
         where 'b: 'a
     {
@@ -85,8 +84,7 @@ impl<'a> SceneIterator<'a>
     }
 }
 
-impl<'a> Iterator for SceneIterator<'a>
-{
+impl<'a> Iterator for SceneIterator<'a> {
     type Item = &'a SceneObject;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -160,18 +158,18 @@ impl<'a> Scene<'a> {
     }
 
     fn move_player(&mut self, input: &InputPoller, duration_s: f32) {
-        let player_virtual_size = self.sprites_data
+        let player_virtual_hitbox = self.sprites_data
             .get_sprite_data(SpriteObject::Player)
             .expect("Can't get player sprite")
-            .get_virtual_size();
+            .get_virtual_hitbox();
         let (mut x, mut y) = self.player_scene_object.pos;
         let x_move = input.x_move();
         x += x_move * self.speeds.x_speed * (duration_s as CoordValue);
-        x = x.min(MAX_X_VALUE - player_virtual_size[0] / 2.0)
-            .max(MIN_X_VALUE + player_virtual_size[0] / 2.0);
+        x = x.min(MAX_X_VALUE - player_virtual_hitbox.right)
+            .max(MIN_X_VALUE + player_virtual_hitbox.left);
         y += input.y_move() * self.speeds.y_speed * (duration_s as CoordValue);
-        y = y.min(MAX_Y_VALUE - player_virtual_size[1] / 2.0)
-            .max(MIN_Y_VALUE + player_virtual_size[1] / 2.0);
+        y = y.min(MAX_Y_VALUE - player_virtual_hitbox.top)
+            .max(MIN_Y_VALUE + player_virtual_hitbox.bottom);
         self.player_scene_object.pos = (x, y);
         if x_move < -0.2 {
             self.player_scene_object.object_type = ObjectType::Player(PlayerState::TiltedLeft);
