@@ -1,5 +1,5 @@
 use glium;
-use ::scene::{Scene};
+use ::scene::Scene;
 use ::sprites_data::SpriteObject;
 
 const MAX_SPRITES_COUNT: usize = 1024;
@@ -98,12 +98,8 @@ impl Sprites {
         where S: glium::Surface,
               F: glium::backend::Facade
     {
-        let vertices = scene.objects().fold(vec![], |mut acc, scene_object| {
-            acc.push(SpriteVertex::from_scene_object(scene_object));
-            acc
-        });
-
-        // let vertices = scene.fold_objects
+        let vertices: Vec<SpriteVertex> =
+            scene.objects().map(SpriteVertex::from_scene_object).collect();
         let vertex_buffer = glium::vertex::VertexBuffer::new(facade, &vertices)
             .expect("Can't initialize vertex buffer");
         surface.draw(&vertex_buffer,

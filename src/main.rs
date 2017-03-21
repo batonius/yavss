@@ -36,7 +36,7 @@ fn main() {
     let virtual_dimensions = (VIRTUAL_WIDHT, VIRTUAL_HEIGHT);
     let frame_rate_loop_duration = Duration::from_millis(1_000u64 / FRAME_RATE);
     let sprites = sprites_data::SpritesData::new(virtual_dimensions);
-    let mut scene = scene::Scene::new(scene::SpeedValues::default(), &sprites);
+    let mut scene = scene::Scene::new(&sprites);
     let window = create_window();
     let mut input_poller = input::InputPoller::new(window.get_window()
         .expect("Can't get window ref"));
@@ -55,12 +55,14 @@ fn main() {
             duration = new_instant - instant;
         }
         instant = new_instant;
+
         input_poller.poll_events();
         if input_poller.exit() {
             break 'main_loop;
         }
         scene.tick(&input_poller, duration);
         renderer.render(&window, &scene);
+
         frame_counter += 1;
         if frame_counter >= FRAMES_TO_COUNT {
             let new_frame_instant = Instant::now();

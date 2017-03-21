@@ -54,20 +54,10 @@ impl Default for SpeedValues {
     }
 }
 
-#[derive(Debug)]
-pub struct Scene<'a> {
-    sprites_data: &'a SpritesData,
-    speeds: SpeedValues,
-    background_position: f32,
-    player_scene_object: SceneObject,
-    bullets_frame: f32,
-    bullets_timeout: f32,
-    bullets: Vec<SceneObject>,
-}
-
 pub struct SceneIterator<'a>
 {
-    bullets: <&'a Vec<SceneObject> as IntoIterator>::IntoIter,
+    player_bullets: <&'a Vec<SceneObject> as IntoIterator>::IntoIter,
+    enemy_bullets: <&'a Vec<SceneObject> as IntoIterator>::IntoIter,
     player: &'a SceneObject,
     empty: bool,
 }
@@ -77,7 +67,8 @@ impl<'a> SceneIterator<'a> {
         where 'b: 'a
     {
         SceneIterator {
-            bullets: scene.bullets.iter(),
+            player_bullets: scene.player_bullets.iter(),
+            enemy_bullets: scene.enemy_bullets.iter(),
             player: &scene.player_scene_object,
             empty: false,
         }
@@ -91,16 +82,32 @@ impl<'a> Iterator for SceneIterator<'a> {
         if self.empty {
             None
         } else {
-            self.bullets.next().or_else(|| {
-                self.empty = true;
-                Some(self.player)
+            self.player_bullets.next().or_else(|| {
+                self.enemy_bullets.next().or_else(|| {
+                    self.empty = true;
+                    Some(self.player)
+                })
             })
         }
     }
 }
 
+#[derive(Debug)]
+pub struct Scene<'a> {
+    sprites_data: &'a SpritesData,
+    speeds: SpeedValues,
+    background_position: f32,
+    player_scene_object: SceneObject,
+    bullets_frame: f32,
+    firing_timeout: f32,
+    player_bullets: Vec<SceneObject>,
+    enemy_bullets: Vec<SceneObject>,
+    new_bullet_timeout: f32,
+}
+
 impl<'a> Scene<'a> {
-    pub fn new(speeds: SpeedValues, sprites_data: &'a SpritesData) -> Scene<'a> {
+    pub fn new(sprites_data: &'a SpritesData) -> Scene<'a> {
+        let speeds = SpeedValues::default();
         let bullets_timeout = speeds.bullet_shooting_speed + 1.0;
         Scene {
             speeds: speeds,
@@ -112,8 +119,10 @@ impl<'a> Scene<'a> {
             },
             bullets_frame: 0.0,
             sprites_data: sprites_data,
-            bullets_timeout: bullets_timeout,
-            bullets: vec![],
+            firing_timeout: bullets_timeout,
+            player_bullets: vec![],
+            enemy_bullets: vec![],
+            new_bullet_timeout: bullets_timeout,
         }
     }
 
@@ -127,6 +136,7 @@ impl<'a> Scene<'a> {
         self.process_input(input, duration_s);
         self.move_player(input, duration_s);
         self.move_background(duration_s);
+        self.add_bullets(duration_s);
         self.move_bullets(duration_s);
         self.blink_bullet(duration_s);
     }
@@ -135,21 +145,33 @@ impl<'a> Scene<'a> {
         SceneIterator::new(self)
     }
 
+    fn add_bullets(&mut self, duration_s: f32) {
+        self.new_bullet_timeout += duration_s;
+        if self.new_bullet_timeout >= self.speeds.bullet_shooting_speed * 3.0 {
+            self.new_bullet_timeout = 0.0;
+            self.enemy_bullets.push(SceneObject {
+                object_type: ObjectType::Bullet(0),
+                pos: (self.player_scene_object.pos.0, MAX_Y_VALUE),
+                angle: -180.0,
+            })
+        }
+    }
+
     fn process_input(&mut self, input: &InputPoller, duration_s: f32) {
-        self.bullets_timeout += duration_s;
-        if input.fire_is_pressed() && self.bullets_timeout >= self.speeds.bullet_shooting_speed {
-            self.bullets_timeout = 0.0;
-            self.bullets.push(SceneObject {
+        self.firing_timeout += duration_s;
+        if input.fire_is_pressed() && self.firing_timeout >= self.speeds.bullet_shooting_speed {
+            self.firing_timeout = 0.0;
+            self.player_bullets.push(SceneObject {
                 object_type: ObjectType::Bullet(0),
                 pos: self.player_scene_object.pos,
                 angle: 0.0f32,
             });
-            self.bullets.push(SceneObject {
+            self.player_bullets.push(SceneObject {
                 object_type: ObjectType::Bullet(0),
                 pos: self.player_scene_object.pos,
                 angle: -20.0f32,
             });
-            self.bullets.push(SceneObject {
+            self.player_bullets.push(SceneObject {
                 object_type: ObjectType::Bullet(0),
                 pos: self.player_scene_object.pos,
                 angle: 20.0f32,
@@ -186,19 +208,33 @@ impl<'a> Scene<'a> {
 
     fn blink_bullet(&mut self, duration_s: f32) {
         self.bullets_frame += self.speeds.bullet_blicking_speed * (duration_s as f32);
+        let iter = (&mut self.player_bullets).iter_mut();
+        let iter = iter.chain((&mut self.enemy_bullets).iter_mut());
+        for bullet in iter {
+            bullet.object_type = ObjectType::Bullet(self.bullets_frame as u32);
+        }
     }
 
     fn move_bullets(&mut self, duration_s: f32) {
+        Scene::move_objects(&mut self.player_bullets,
+                            self.speeds.bullet_speed,
+                            duration_s);
+        Scene::move_objects(&mut self.enemy_bullets,
+                            self.speeds.bullet_speed,
+                            duration_s);
+    }
+
+    fn move_objects(objects: &mut Vec<SceneObject>, speed: f32, duration_s: f32) {
         use std::f32;
-        for bullet in &mut self.bullets {
-            let distance = self.speeds.bullet_speed * duration_s;
-            let angle_rad = (-bullet.angle + 90.0) / 180.0 * f32::consts::PI;
-            bullet.pos.0 += angle_rad.cos() * distance;
-            bullet.pos.1 += angle_rad.sin() * distance;
+        for object in objects.iter_mut() {
+            let distance = speed * duration_s;
+            let angle_rad = (-object.angle + 90.0) / 180.0 * f32::consts::PI;
+            object.pos.0 += angle_rad.cos() * distance;
+            object.pos.1 += angle_rad.sin() * distance;
         }
-        self.bullets.retain(|&bullet| {
-            bullet.pos.0 >= MIN_X_VALUE || bullet.pos.0 <= MAX_X_VALUE ||
-            bullet.pos.1 >= MIN_Y_VALUE || bullet.pos.1 <= MAX_Y_VALUE
+        objects.retain(|&object| {
+            object.pos.0 >= MIN_X_VALUE || object.pos.0 <= MAX_X_VALUE ||
+            object.pos.1 >= MIN_Y_VALUE || object.pos.1 <= MAX_Y_VALUE
         });
     }
 }
