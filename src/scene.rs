@@ -1,6 +1,6 @@
 use std::time::Duration;
 use input::InputPoller;
-use sprites_data::{SpriteObject, SpritesData};
+use sprites_data::{SpriteObject, SpriteData, SpritesData};
 
 type CoordValue = f32;
 type Speed = f32; //Screens/s
@@ -21,7 +21,8 @@ pub enum PlayerState {
 #[derive(Debug, Clone, Copy)]
 pub enum ObjectType {
     Player(PlayerState),
-    Bullet(u32),
+    PlayerBullet(u32),
+    EnemyBullet(u32),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -29,6 +30,16 @@ pub struct SceneObject {
     pub object_type: ObjectType,
     pub pos: Position,
     pub angle: f32,
+}
+
+impl SceneObject {
+    pub fn new(object_type: ObjectType, pos: Position, angle: f32) -> SceneObject {
+        SceneObject {
+            object_type: object_type,
+            pos: pos,
+            angle: angle,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -93,6 +104,33 @@ impl<'a> Iterator for SceneIterator<'a> {
 }
 
 #[derive(Debug)]
+struct SpriteDataCache<'a> {
+    player_sprite_data: &'a SpriteData,
+    player_bullet_sprite_data: &'a SpriteData,
+    enemy_bullet_sprite_data: &'a SpriteData,
+}
+
+impl<'a> SpriteDataCache<'a> {
+    pub fn new(sprites_data: &'a SpritesData) -> SpriteDataCache<'a> {
+        SpriteDataCache {
+            player_sprite_data: sprites_data.get_sprite_data(SpriteObject::Player).unwrap(),
+            player_bullet_sprite_data: sprites_data.get_sprite_data(SpriteObject::PlayerBullet)
+                .unwrap(),
+            enemy_bullet_sprite_data: sprites_data.get_sprite_data(SpriteObject::EnemyBullet)
+                .unwrap(),
+        }
+    }
+
+    pub fn get_sprite_data(&self, object_type: &ObjectType) -> &'a SpriteData {
+        match *object_type {
+            ObjectType::Player(..) => self.player_sprite_data,
+            ObjectType::EnemyBullet(..) => self.enemy_bullet_sprite_data,
+            ObjectType::PlayerBullet(..) => self.player_bullet_sprite_data,
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Scene<'a> {
     sprites_data: &'a SpritesData,
     speeds: SpeedValues,
@@ -103,6 +141,7 @@ pub struct Scene<'a> {
     player_bullets: Vec<SceneObject>,
     enemy_bullets: Vec<SceneObject>,
     new_bullet_timeout: f32,
+    sprite_data_cache: SpriteDataCache<'a>,
 }
 
 impl<'a> Scene<'a> {
@@ -112,21 +151,20 @@ impl<'a> Scene<'a> {
         Scene {
             speeds: speeds,
             background_position: 0.0,
-            player_scene_object: SceneObject {
-                object_type: ObjectType::Player(PlayerState::Normal),
-                pos: (0.5, 0.2),
-                angle: 0.0,
-            },
+            player_scene_object: SceneObject::new(ObjectType::Player(PlayerState::Normal),
+                                                  (0.5, 0.2),
+                                                  0.0),
             bullets_frame: 0.0,
             sprites_data: sprites_data,
             firing_timeout: bullets_timeout,
             player_bullets: vec![],
             enemy_bullets: vec![],
             new_bullet_timeout: bullets_timeout,
+            sprite_data_cache: SpriteDataCache::new(sprites_data),
         }
     }
 
-    pub fn background_position(&self) -> f32 {
+    pub fn get_background_position(&self) -> f32 {
         self.background_position
     }
 
@@ -138,10 +176,11 @@ impl<'a> Scene<'a> {
         self.move_background(duration_s);
         self.add_bullets(duration_s);
         self.move_bullets(duration_s);
+        self.detect_collisions();
         self.blink_bullet(duration_s);
     }
 
-    pub fn objects(& self) -> SceneIterator {
+    pub fn get_objects(&self) -> SceneIterator {
         SceneIterator::new(self)
     }
 
@@ -149,11 +188,9 @@ impl<'a> Scene<'a> {
         self.new_bullet_timeout += duration_s;
         if self.new_bullet_timeout >= self.speeds.bullet_shooting_speed * 3.0 {
             self.new_bullet_timeout = 0.0;
-            self.enemy_bullets.push(SceneObject {
-                object_type: ObjectType::Bullet(0),
-                pos: (self.player_scene_object.pos.0, MAX_Y_VALUE),
-                angle: -180.0,
-            })
+            self.enemy_bullets.push(SceneObject::new(ObjectType::EnemyBullet(0),
+                                                     (self.player_scene_object.pos.0, MAX_Y_VALUE),
+                                                     -180.0))
         }
     }
 
@@ -161,28 +198,21 @@ impl<'a> Scene<'a> {
         self.firing_timeout += duration_s;
         if input.fire_is_pressed() && self.firing_timeout >= self.speeds.bullet_shooting_speed {
             self.firing_timeout = 0.0;
-            self.player_bullets.push(SceneObject {
-                object_type: ObjectType::Bullet(0),
-                pos: self.player_scene_object.pos,
-                angle: 0.0f32,
-            });
-            self.player_bullets.push(SceneObject {
-                object_type: ObjectType::Bullet(0),
-                pos: self.player_scene_object.pos,
-                angle: -20.0f32,
-            });
-            self.player_bullets.push(SceneObject {
-                object_type: ObjectType::Bullet(0),
-                pos: self.player_scene_object.pos,
-                angle: 20.0f32,
-            });
+            self.player_bullets.push(SceneObject::new(ObjectType::PlayerBullet(0),
+                                                      self.player_scene_object.pos,
+                                                      0.0f32));
+            self.player_bullets.push(SceneObject::new(ObjectType::PlayerBullet(0),
+                                                      self.player_scene_object.pos,
+                                                      -20.0f32));
+            self.player_bullets.push(SceneObject::new(ObjectType::PlayerBullet(0),
+                                                      self.player_scene_object.pos,
+                                                      20.0f32));
         }
     }
 
     fn move_player(&mut self, input: &InputPoller, duration_s: f32) {
-        let player_virtual_hitbox = self.sprites_data
-            .get_sprite_data(SpriteObject::Player)
-            .expect("Can't get player sprite")
+        let player_virtual_hitbox = self.sprite_data_cache
+            .get_sprite_data(&self.player_scene_object.object_type)
             .get_virtual_hitbox();
         let (mut x, mut y) = self.player_scene_object.pos;
         let x_move = input.x_move();
@@ -211,7 +241,11 @@ impl<'a> Scene<'a> {
         let iter = (&mut self.player_bullets).iter_mut();
         let iter = iter.chain((&mut self.enemy_bullets).iter_mut());
         for bullet in iter {
-            bullet.object_type = ObjectType::Bullet(self.bullets_frame as u32);
+            bullet.object_type = match bullet.object_type {
+                ObjectType::PlayerBullet(_) => ObjectType::PlayerBullet(self.bullets_frame as u32),
+                ObjectType::EnemyBullet(_) => ObjectType::EnemyBullet(self.bullets_frame as u32),
+                object_type @ _ => object_type,
+            }
         }
     }
 
@@ -236,5 +270,29 @@ impl<'a> Scene<'a> {
             object.pos.0 >= MIN_X_VALUE || object.pos.0 <= MAX_X_VALUE ||
             object.pos.1 >= MIN_Y_VALUE || object.pos.1 <= MAX_Y_VALUE
         });
+    }
+
+    fn detect_collisions(&mut self) {
+        let player_scene_object = &self.player_scene_object;
+        let sprite_data_cache = &self.sprite_data_cache;
+        self.enemy_bullets.retain(|bullet| {
+            !Scene::check_collision(sprite_data_cache, bullet, player_scene_object)
+        });
+    }
+
+    fn check_collision(sprite_data_cache: &SpriteDataCache,
+                       a: &SceneObject,
+                       b: &SceneObject)
+                       -> bool {
+        let a_hitbox = sprite_data_cache.get_sprite_data(&a.object_type).get_virtual_hitbox();
+        let b_hitbox = sprite_data_cache.get_sprite_data(&b.object_type).get_virtual_hitbox();
+        if a.pos.0 + a_hitbox.right > b.pos.0 - b_hitbox.left &&
+           b.pos.0 + b_hitbox.right > a.pos.0 - a_hitbox.left &&
+           a.pos.1 + a_hitbox.top > b.pos.1 - b_hitbox.bottom &&
+           b.pos.1 + b_hitbox.top > a.pos.1 - a_hitbox.bottom {
+            true
+        } else {
+            false
+        }
     }
 }

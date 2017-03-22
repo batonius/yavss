@@ -1,5 +1,6 @@
 use image;
 use std::collections::HashMap;
+use std::collections::hash_map::Keys;
 
 const SPRITES_IMAGE: &'static [u8] = include_bytes!("../data/sprites.png");
 const SPRITES_DESCR: &'static str = include_str!("../data/sprites.txt");
@@ -8,7 +9,8 @@ const SPRITES_DESCR: &'static str = include_str!("../data/sprites.txt");
 pub enum SpriteObject {
     Background,
     Player,
-    Bullet,
+    PlayerBullet,
+    EnemyBullet,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -43,10 +45,6 @@ impl SpriteData {
 
     pub fn get_frames_count(&self) -> u32 {
         self.frames_count
-    }
-
-    pub fn get_hitbox(&self) -> Hitbox {
-        self.hitbox
     }
 
     pub fn get_virtual_hitbox(&self) -> Hitbox {
@@ -84,7 +82,8 @@ impl SpritesData {
         match name {
             "BACKGROUND" => Some(SpriteObject::Background),
             "PLAYER" => Some(SpriteObject::Player),
-            "BULLET" => Some(SpriteObject::Bullet),
+            "PLAYER_BULLET" => Some(SpriteObject::PlayerBullet),
+            "ENEMY_BULLET" => Some(SpriteObject::EnemyBullet),
             _ => None,
         }
     }
@@ -97,6 +96,9 @@ impl SpritesData {
 
         let mut result = HashMap::new();
         for line in SPRITES_DESCR.lines() {
+            if line.is_empty() {
+                continue;
+            }
             let words = line.split(' ').collect::<Vec<_>>();
             if words.len() != 6 {
                 panic!("Can't parse sprite description");
@@ -144,7 +146,6 @@ impl SpritesData {
         let mut right: u32 = 0;
         let mut bottom: u32 = 0;
 
-
         for x in 0..size.0 {
             for y in 0..size.1 {
                 if image_buffer.get_pixel(offset.0 + x, offset.1 + y)[3] != MIN {
@@ -155,12 +156,13 @@ impl SpritesData {
                 }
             }
         }
+        println!("{}, {}, {}, {}", left, top, right, bottom);
 
         Hitbox {
             left: left as f32 / size.0 as f32,
-            top: top as f32 / size.1 as f32,
-            right: right as f32 / size.0 as f32,
-            bottom: bottom as f32 / size.1 as f32,
+            top: (top) as f32 / size.1 as f32,
+            right: (right + 1) as f32 / size.0 as f32,
+            bottom: (bottom + 1) as f32 / size.1 as f32,
         }
     }
 }
@@ -188,5 +190,9 @@ impl SpritesData {
 
     pub fn get_image_size(&self) -> (u32, u32) {
         self.image_size
+    }
+
+    pub fn get_sprite_objects(&self) -> Keys<SpriteObject, SpriteData> {
+        self.sprites.keys()
     }
 }

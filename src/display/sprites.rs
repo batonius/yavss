@@ -22,7 +22,8 @@ impl SpriteVertex {
             ObjectType::Player(PlayerState::Normal) => (SpriteObject::Player as u32, 0),
             ObjectType::Player(PlayerState::TiltedLeft) => (SpriteObject::Player as u32, 1),
             ObjectType::Player(PlayerState::TiltedRight) => (SpriteObject::Player as u32, 2),
-            ObjectType::Bullet(frame) => (SpriteObject::Bullet as u32, frame % 4),
+            ObjectType::PlayerBullet(frame) => (SpriteObject::PlayerBullet as u32, frame % 4),
+            ObjectType::EnemyBullet(frame) => (SpriteObject::EnemyBullet as u32, frame % 4),
         };
         let transform = cgmath::Matrix4::from(cgmath::Quaternion::from(cgmath::Euler {
                 x: cgmath::Deg(0.0),
@@ -74,7 +75,7 @@ impl Sprites {
             let mut sizes_map = sizes_ub.map();
             let mut offsets_map = offsets_ub.map();
             let mut dimensions_map = dimensions_ub.map();
-            for sprite_object in &[SpriteObject::Player, SpriteObject::Bullet] {
+            for sprite_object in sprites_data.get_sprite_objects() {
                 let sprite_data = sprites_data.get_sprite_data(*sprite_object)
                     .expect("Can't get sprite data");
                 sizes_map[*sprite_object as usize] = sprite_data.get_virtual_size();
@@ -99,7 +100,7 @@ impl Sprites {
               F: glium::backend::Facade
     {
         let vertices: Vec<SpriteVertex> =
-            scene.objects().map(SpriteVertex::from_scene_object).collect();
+            scene.get_objects().map(SpriteVertex::from_scene_object).collect();
         let vertex_buffer = glium::vertex::VertexBuffer::new(facade, &vertices)
             .expect("Can't initialize vertex buffer");
         surface.draw(&vertex_buffer,

@@ -50,7 +50,6 @@ impl Background {
         let background_sprite_data =
             sprites_data.get_sprite_data(::sprites_data::SpriteObject::Background)
                 .expect("Can't get background sprite");
-        println!("{:?}", background_sprite_data);
         Background {
             shape: glium::vertex::VertexBuffer::new(facade, &BACKGROUND_VERTICES)
                 .expect("Can't initialize backgroudn vertex buffer"),

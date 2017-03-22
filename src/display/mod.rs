@@ -41,11 +41,8 @@ impl Renderer {
             framebuffer.clear_color(0.5, 0.5, 0.0, 1.0);
             self.background.render(framebuffer,
                                    &self.sprites_texture,
-                                   scene.background_position());
-            self.sprites.render(window,
-                                framebuffer,
-                                &self.sprites_texture,
-                                scene);
+                                   scene.get_background_position());
+            self.sprites.render(window, framebuffer, &self.sprites_texture, scene);
         });
         self.postprocessor.render(&mut surface);
         surface.finish().expect("Can't draw on a surface");
