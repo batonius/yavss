@@ -141,7 +141,7 @@ impl<'a> Scene<'a> {
         self.blink_bullet(duration_s);
     }
 
-    pub fn objects<'c>(&'c self) -> SceneIterator<'c> {
+    pub fn objects(& self) -> SceneIterator {
         SceneIterator::new(self)
     }
 

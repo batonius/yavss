@@ -74,7 +74,7 @@ impl Sprites {
             let mut sizes_map = sizes_ub.map();
             let mut offsets_map = offsets_ub.map();
             let mut dimensions_map = dimensions_ub.map();
-            for sprite_object in [SpriteObject::Player, SpriteObject::Bullet].into_iter() {
+            for sprite_object in &[SpriteObject::Player, SpriteObject::Bullet] {
                 let sprite_data = sprites_data.get_sprite_data(*sprite_object)
                     .expect("Can't get sprite data");
                 sizes_map[*sprite_object as usize] = sprite_data.get_virtual_size();

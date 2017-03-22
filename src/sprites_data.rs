@@ -97,7 +97,7 @@ impl SpritesData {
 
         let mut result = HashMap::new();
         for line in SPRITES_DESCR.lines() {
-            let words = line.split(" ").collect::<Vec<_>>();
+            let words = line.split(' ').collect::<Vec<_>>();
             if words.len() != 6 {
                 panic!("Can't parse sprite description");
             }
@@ -129,7 +129,7 @@ impl SpritesData {
                           });
         }
 
-        return result;
+        result
     }
 
     fn calculate_hitbox(image_buffer: &image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
