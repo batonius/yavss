@@ -14,7 +14,7 @@ pub struct Renderer {
 
 impl Renderer {
     pub fn new<F>(facade: &F,
-                  sprites_data: &::sprites_data::SpritesData,
+                  sprites_data: &::sprites::SpritesData,
                   virtual_dimensions: (u32, u32))
                   -> Renderer
         where F: glium::backend::Facade

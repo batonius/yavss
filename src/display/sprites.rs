@@ -1,6 +1,6 @@
 use glium;
 use ::scene::Scene;
-use ::sprites_data::SpriteObject;
+use ::sprites::SpriteObject;
 
 const MAX_SPRITES_COUNT: usize = 1024;
 
@@ -54,7 +54,7 @@ pub struct Sprites {
 }
 
 impl Sprites {
-    pub fn new<F>(facade: &F, sprites_data: &::sprites_data::SpritesData) -> Sprites
+    pub fn new<F>(facade: &F, sprites_data: &::sprites::SpritesData) -> Sprites
         where F: glium::backend::Facade
     {
         let program = glium::program::Program::from_source(facade,

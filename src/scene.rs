@@ -1,6 +1,6 @@
 use std::time::Duration;
 use input::InputPoller;
-use sprites_data::{SpriteObject, SpriteData, SpritesData};
+use sprites::{SpriteObject, SpriteData, SpritesData};
 
 type CoordValue = f32;
 type Speed = f32; //Screens/s

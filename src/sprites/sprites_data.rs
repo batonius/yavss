@@ -1,9 +1,10 @@
 use image;
 use std::collections::HashMap;
 use std::collections::hash_map::Keys;
+use ::sprites::convex;
 
-const SPRITES_IMAGE: &'static [u8] = include_bytes!("../data/sprites.png");
-const SPRITES_DESCR: &'static str = include_str!("../data/sprites.txt");
+const SPRITES_IMAGE: &'static [u8] = include_bytes!("../../data/sprites.png");
+const SPRITES_DESCR: &'static str = include_str!("../../data/sprites.txt");
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 pub enum SpriteObject {
@@ -28,6 +29,7 @@ pub struct SpriteData {
     virtual_size: [f32; 2],
     hitbox: Hitbox,
     frames_count: u32,
+    convex: Vec<convex::Point>,
 }
 
 impl SpriteData {
@@ -128,6 +130,9 @@ impl SpritesData {
                               hitbox: SpritesData::calculate_hitbox(image_buffer,
                                                                     (offset_x, offset_y),
                                                                     (width, height)),
+                              convex: convex::calculate_convex(image_buffer,
+                                                               (offset_x, offset_y),
+                                                               (width, height)),
                           });
         }
 
@@ -156,7 +161,6 @@ impl SpritesData {
                 }
             }
         }
-        println!("{}, {}, {}, {}", left, top, right, bottom);
 
         Hitbox {
             left: left as f32 / size.0 as f32,
