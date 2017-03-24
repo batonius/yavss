@@ -38,6 +38,10 @@ fn main() {
     let sprites = sprites::SpritesData::new(virtual_dimensions);
     println!("{:?}",
              sprites.get_sprite_data(sprites::SpriteObject::Player));
+    println!("{:?}",
+             sprites.get_sprite_data(sprites::SpriteObject::EnemyBullet));
+    println!("{:?}",
+             sprites.get_sprite_data(sprites::SpriteObject::PlayerBullet));
     let mut scene = scene::Scene::new(&sprites);
     let window = create_window();
     let mut input_poller = input::InputPoller::new(window.get_window()

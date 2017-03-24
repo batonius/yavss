@@ -29,20 +29,47 @@ pub fn calculate_convex(image_buffer: &image::ImageBuffer<image::Rgba<u8>, Vec<u
         return result;
     }
 
+    let start_convex = convex_point;
+    let mut prev_convex = convex_point;
+
     for boundary_point in BoundaryIterator::new(width, height, (width - 1, convex_point.1)) {
         for point in LineIterator::new(boundary_point, convex_point) {
             if image_buffer.get_pixel((offset_x + point.0) as u32,
                            (offset_y + point.1) as u32)[3] !=
                u8::MIN {
-                result.push(convex_point);
+                if prev_convex != convex_point &&
+                   !is_points_on_line(prev_convex, convex_point, point) {
+                    result.push(prev_convex);
+                    prev_convex = convex_point;
+                }
                 convex_point = point;
                 break;
             }
         }
     }
 
-    result.push(convex_point);
+    result.push(prev_convex);
+    if !is_points_on_line(prev_convex, convex_point, start_convex) {
+        result.push(convex_point);
+    }
     return result;
+}
+
+fn is_points_on_line(a: Point, b: Point, c: Point) -> bool {
+    if a.0 == b.0 {
+        b.0 == c.0
+    } else if a.1 == b.1 {
+        b.1 == c.1
+    } else {
+        let ab_x_delta = b.0 - a.0;
+        let ab_y_delta = b.1 - a.1;
+        let bc_x_delta = c.0 - b.0;
+        let bc_y_delta = c.1 - b.1;
+
+        ab_x_delta.abs() == ab_y_delta.abs() && bc_x_delta.abs() == bc_y_delta.abs() &&
+        ab_x_delta.signum() == bc_x_delta.signum() &&
+        ab_y_delta.signum() == bc_y_delta.signum()
+    }
 }
 
 struct BoundaryIterator {
