@@ -29,7 +29,7 @@ pub struct SpriteData {
     virtual_size: [f32; 2],
     hitbox: Hitbox,
     frames_count: u32,
-    convex: Vec<convex::Point>,
+    convex: Vec<(f32, f32)>,
 }
 
 impl SpriteData {
@@ -95,6 +95,7 @@ impl SpritesData {
                            image_dimensions: (u32, u32))
                            -> HashMap<SpriteObject, SpriteData> {
         use std::str::FromStr;
+        use std::cmp::{min, max};
 
         let mut result = HashMap::new();
         for line in SPRITES_DESCR.lines() {
@@ -117,6 +118,32 @@ impl SpritesData {
                 .expect("Can't parse an int from sprite description");
             let frames_count = u32::from_str(words[5])
                 .expect("Can't parse an int from sprite description");
+
+            let half_pixel_widht = (1.0 / width as f32) / 2.0;
+            let half_pixel_height = (1.0 / height as f32) / 2.0;
+            let convex =
+                convex::calculate_convex(image_buffer, (offset_x, offset_y), (width, height));
+
+            let (left, top, right, bottom) = convex.iter().fold((width - 1, height - 1, 0, 0),
+                                                                |(left, top, right, bottom),
+                                                                 &(x, y)| {
+                let x = x as u32;
+                let y = y as u32;
+                (min(left, x), min(top, y), max(right, x), max(bottom, y))
+            });
+            let hitbox = Hitbox {
+                left: left as f32 / width as f32,
+                top: top as f32 / height as f32,
+                right: (right + 1) as f32 / width as f32,
+                bottom: (bottom + 1) as f32 / height as f32,
+            };
+            let convex = convex.into_iter()
+                .map(|(x, y)| {
+                    (x as f32 / width as f32 + half_pixel_widht,
+                     (height as i32 - y) as f32 / height as f32 + half_pixel_height)
+                })
+                .collect();
+
             result.insert(object,
                           SpriteData {
                               image_offset: [offset_x as f32 / image_dimensions.0 as f32,
@@ -127,51 +154,14 @@ impl SpritesData {
                               virtual_size: [width as f32 / virtual_dimensions.0 as f32,
                                              height as f32 / virtual_dimensions.1 as f32],
                               frames_count: frames_count,
-                              hitbox: SpritesData::calculate_hitbox(image_buffer,
-                                                                    (offset_x, offset_y),
-                                                                    (width, height)),
-                              convex: convex::calculate_convex(image_buffer,
-                                                               (offset_x, offset_y),
-                                                               (width, height)),
+                              hitbox: hitbox,
+                              convex: convex,
                           });
         }
 
         result
     }
-
-    fn calculate_hitbox(image_buffer: &image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
-                        offset: (u32, u32),
-                        size: (u32, u32))
-                        -> Hitbox {
-        use std::u8::MIN;
-        use std::cmp;
-
-        let mut left: u32 = size.0;
-        let mut top: u32 = size.1;
-        let mut right: u32 = 0;
-        let mut bottom: u32 = 0;
-
-        for x in 0..size.0 {
-            for y in 0..size.1 {
-                if image_buffer.get_pixel(offset.0 + x, offset.1 + y)[3] != MIN {
-                    left = cmp::min(left, x);
-                    top = cmp::min(top, y);
-                    right = cmp::max(right, x);
-                    bottom = cmp::max(bottom, y);
-                }
-            }
-        }
-
-        Hitbox {
-            left: left as f32 / size.0 as f32,
-            top: (top) as f32 / size.1 as f32,
-            right: (right + 1) as f32 / size.0 as f32,
-            bottom: (bottom + 1) as f32 / size.1 as f32,
-        }
-    }
 }
-
-
 
 impl SpritesData {
     pub fn new(virtual_dimensions: (u32, u32)) -> SpritesData {
