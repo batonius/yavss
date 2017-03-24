@@ -200,13 +200,13 @@ impl<'a> Scene<'a> {
             self.firing_timeout = 0.0;
             self.player_bullets.push(SceneObject::new(ObjectType::PlayerBullet(0),
                                                       self.player_scene_object.pos,
-                                                      0.0f32));
+                                                      self.player_scene_object.angle + 0.0f32));
             self.player_bullets.push(SceneObject::new(ObjectType::PlayerBullet(0),
                                                       self.player_scene_object.pos,
-                                                      -20.0f32));
+                                                      self.player_scene_object.angle - 20.0f32));
             self.player_bullets.push(SceneObject::new(ObjectType::PlayerBullet(0),
                                                       self.player_scene_object.pos,
-                                                      20.0f32));
+                                                      self.player_scene_object.angle + 20.0f32));
         }
     }
 
@@ -230,6 +230,9 @@ impl<'a> Scene<'a> {
         } else {
             self.player_scene_object.object_type = ObjectType::Player(PlayerState::Normal);
         }
+
+        let total_tilt = (input.right_tilt() - input.left_tilt()) * 90.0;
+        self.player_scene_object.angle = total_tilt;
     }
 
     fn move_background(&mut self, duration_s: f32) {

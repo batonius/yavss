@@ -12,6 +12,8 @@ struct InputState {
     right_is_pressed: bool,
     down_is_pressed: bool,
     up_is_pressed: bool,
+    left_tilt: AxisValue,
+    right_tilt: AxisValue,
 }
 
 impl Default for InputState {
@@ -25,6 +27,8 @@ impl Default for InputState {
             right_is_pressed: false,
             down_is_pressed: false,
             up_is_pressed: false,
+            left_tilt: 0.0,
+            right_tilt: 0.0,
         }
     }
 }
@@ -113,6 +117,8 @@ impl<'a> InputPoller<'a> {
             for _ in self.gilrs.poll_events() {}
             self.state.x_move = self.gilrs[0].value(gilrs::Axis::LeftStickX);
             self.state.y_move = self.gilrs[0].value(gilrs::Axis::LeftStickY);
+            self.state.left_tilt = self.gilrs[0].value(gilrs::Axis::LeftZ);
+            self.state.right_tilt = self.gilrs[0].value(gilrs::Axis::RightZ);
             self.state.fire_is_pressed = self.gilrs[0].is_pressed(gilrs::Button::South);
         } else {
             self.state.x_move = 0.0;
@@ -139,6 +145,14 @@ impl<'a> InputPoller<'a> {
 
     pub fn y_move(&self) -> AxisValue {
         self.state.y_move
+    }
+
+    pub fn left_tilt(&self) -> AxisValue {
+        self.state.left_tilt
+    }
+
+    pub fn right_tilt(&self) -> AxisValue {
+        self.state.right_tilt
     }
 
     pub fn exit(&self) -> bool {

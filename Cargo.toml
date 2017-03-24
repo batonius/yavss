@@ -6,5 +6,5 @@ authors = ["baton <batonius.kirov@gmail.com>"]
 [dependencies]
 glium = "0.16"
 cgmath = "0.12"
-gilrs = "0.4.2"
+gilrs = "0.4.3"
 image = "0.12"
