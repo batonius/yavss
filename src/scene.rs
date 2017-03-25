@@ -1,6 +1,7 @@
 use std::time::Duration;
 use input::InputPoller;
 use sprites::{SpriteObject, SpriteData, SpritesData};
+use collision::detect_collisions;
 
 type CoordValue = f32;
 type Speed = f32; //Screens/s
@@ -30,6 +31,7 @@ pub struct SceneObject {
     pub object_type: ObjectType,
     pub pos: Position,
     pub angle: f32,
+    pub to_delete: bool,
 }
 
 impl SceneObject {
@@ -38,6 +40,7 @@ impl SceneObject {
             object_type: object_type,
             pos: pos,
             angle: angle,
+            to_delete: false,
         }
     }
 }
@@ -104,7 +107,7 @@ impl<'a> Iterator for SceneIterator<'a> {
 }
 
 #[derive(Debug)]
-struct SpriteDataCache<'a> {
+pub struct SpriteDataCache<'a> {
     player_sprite_data: &'a SpriteData,
     player_bullet_sprite_data: &'a SpriteData,
     enemy_bullet_sprite_data: &'a SpriteData,
@@ -276,26 +279,22 @@ impl<'a> Scene<'a> {
     }
 
     fn detect_collisions(&mut self) {
-        let player_scene_object = &self.player_scene_object;
-        let sprite_data_cache = &self.sprite_data_cache;
-        self.enemy_bullets.retain(|bullet| {
-            !Scene::check_collision(sprite_data_cache, bullet, player_scene_object)
-        });
-    }
+        use std::iter;
 
-    fn check_collision(sprite_data_cache: &SpriteDataCache,
-                       a: &SceneObject,
-                       b: &SceneObject)
-                       -> bool {
-        let a_hitbox = sprite_data_cache.get_sprite_data(&a.object_type).get_virtual_hitbox();
-        let b_hitbox = sprite_data_cache.get_sprite_data(&b.object_type).get_virtual_hitbox();
-        if a.pos.0 + a_hitbox.right > b.pos.0 - b_hitbox.left &&
-           b.pos.0 + b_hitbox.right > a.pos.0 - a_hitbox.left &&
-           a.pos.1 + a_hitbox.top > b.pos.1 - b_hitbox.bottom &&
-           b.pos.1 + b_hitbox.top > a.pos.1 - a_hitbox.bottom {
-            true
-        } else {
-            false
-        }
+        detect_collisions(&self.sprite_data_cache,
+                          &mut self.enemy_bullets,
+                          iter::once(&mut self.player_scene_object),
+                          |a, _| {
+                              a.to_delete = true;
+                          });
+        detect_collisions(&self.sprite_data_cache,
+                          &mut self.enemy_bullets,
+                          &mut self.player_bullets,
+                          |a, b| {
+                              a.to_delete = true;
+                              b.to_delete = true;
+                          });
+        self.enemy_bullets.retain(|bullet| !bullet.to_delete);
+        self.player_bullets.retain(|bullet| !bullet.to_delete);
     }
 }

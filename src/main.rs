@@ -6,6 +6,7 @@ extern crate image;
 
 mod input;
 mod sprites;
+mod collision;
 mod scene;
 mod display;
 
