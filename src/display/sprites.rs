@@ -28,11 +28,11 @@ impl SpriteVertex {
         let transform = cgmath::Matrix4::from(cgmath::Quaternion::from(cgmath::Euler {
                 x: cgmath::Deg(0.0),
                 y: cgmath::Deg(0.0),
-                z: cgmath::Deg(scene_object.angle),
+                z: cgmath::Deg(scene_object.angle.as_deg()),
             }))
             .into();
         SpriteVertex {
-            v_pos: [scene_object.pos.0 * 2.0 - 1.0, scene_object.pos.1 * 2.0 - 1.0],
+            v_pos: [scene_object.pos.x() * 2.0 - 1.0, scene_object.pos.y() * 2.0 - 1.0],
             v_sprite: sprite,
             v_frame: frame,
             v_transform: transform,
@@ -75,12 +75,12 @@ impl Sprites {
             let mut sizes_map = sizes_ub.map();
             let mut offsets_map = offsets_ub.map();
             let mut dimensions_map = dimensions_ub.map();
-            for sprite_object in sprites_data.get_sprite_objects() {
-                let sprite_data = sprites_data.get_sprite_data(*sprite_object)
+            for sprite_object in sprites_data.sprite_objects() {
+                let sprite_data = sprites_data.sprite_data(*sprite_object)
                     .expect("Can't get sprite data");
-                sizes_map[*sprite_object as usize] = sprite_data.get_virtual_size();
-                offsets_map[*sprite_object as usize] = sprite_data.get_image_offset();
-                dimensions_map[*sprite_object as usize] = sprite_data.get_image_size();
+                sizes_map[*sprite_object as usize] = sprite_data.virtual_size().into();
+                offsets_map[*sprite_object as usize] = sprite_data.image_offset().into();
+                dimensions_map[*sprite_object as usize] = sprite_data.image_size().into();
             }
         }
         Sprites {
@@ -100,7 +100,7 @@ impl Sprites {
               F: glium::backend::Facade
     {
         let vertices: Vec<SpriteVertex> =
-            scene.get_objects().map(SpriteVertex::from_scene_object).collect();
+            scene.objects().map(SpriteVertex::from_scene_object).collect();
         let vertex_buffer = glium::vertex::VertexBuffer::new(facade, &vertices)
             .expect("Can't initialize vertex buffer");
         surface.draw(&vertex_buffer,

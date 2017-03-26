@@ -2,6 +2,7 @@ use image;
 use std::collections::HashMap;
 use std::collections::hash_map::Keys;
 use ::sprites::convex;
+use util::{IPoint, UPoint, FPoint, FDimensions, Dimensions};
 
 const SPRITES_IMAGE: &'static [u8] = include_bytes!("../../data/sprites.png");
 const SPRITES_DESCR: &'static str = include_str!("../../data/sprites.txt");
@@ -24,37 +25,37 @@ pub struct Hitbox {
 
 #[derive(Debug)]
 pub struct SpriteData {
-    image_offset: [f32; 2],
-    image_size: [f32; 2],
-    virtual_size: [f32; 2],
+    image_offset: FPoint,
+    image_size: FDimensions,
+    virtual_size: FDimensions,
     hitbox: Hitbox,
     frames_count: u32,
-    convex: Vec<(f32, f32)>,
+    convex: Vec<FPoint>,
 }
 
 impl SpriteData {
-    pub fn get_image_offset(&self) -> [f32; 2] {
+    pub fn image_offset(&self) -> FPoint {
         self.image_offset
     }
 
-    pub fn get_image_size(&self) -> [f32; 2] {
+    pub fn image_size(&self) -> FDimensions {
         self.image_size
     }
 
-    pub fn get_virtual_size(&self) -> [f32; 2] {
+    pub fn virtual_size(&self) -> FDimensions {
         self.virtual_size
     }
 
-    pub fn get_frames_count(&self) -> u32 {
+    pub fn frames_count(&self) -> u32 {
         self.frames_count
     }
 
-    pub fn get_virtual_hitbox(&self) -> Hitbox {
+    pub fn virtual_hitbox(&self) -> Hitbox {
         Hitbox {
-            left: self.virtual_size[0] * (0.5 - self.hitbox.left),
-            top: self.virtual_size[1] * (0.5 - self.hitbox.top),
-            right: self.virtual_size[0] * (self.hitbox.right - 0.5),
-            bottom: self.virtual_size[1] * (self.hitbox.bottom - 0.5),
+            left: self.virtual_size.width() * (0.5 - self.hitbox.left),
+            top: self.virtual_size.height() * (0.5 - self.hitbox.top),
+            right: self.virtual_size.width() * (self.hitbox.right - 0.5),
+            bottom: self.virtual_size.height() * (self.hitbox.bottom - 0.5),
         }
     }
 }
@@ -62,15 +63,19 @@ impl SpriteData {
 #[derive(Debug)]
 pub struct SpritesData {
     image_buffer: Vec<u8>,
-    image_size: (u32, u32),
+    image_size: Dimensions,
     sprites: HashMap<SpriteObject, SpriteData>,
 }
 
 impl SpritesData {
-    pub fn from_image_buffer(image_buffer: image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
-                             virtual_dimensions: (u32, u32),
-                             image_dimensions: (u32, u32))
-                             -> SpritesData {
+    pub fn from_image_buffer<D1, D2>(image_buffer: image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
+                                     virtual_dimensions: D1,
+                                     image_dimensions: D2)
+                                     -> SpritesData
+        where D1: Into<Dimensions>,
+              D2: Into<Dimensions>
+    {
+        let image_dimensions = image_dimensions.into();
         let sprites =
             SpritesData::parse_sprites_descr(&image_buffer, virtual_dimensions, image_dimensions);
         SpritesData {
@@ -90,12 +95,18 @@ impl SpritesData {
         }
     }
 
-    fn parse_sprites_descr(image_buffer: &image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
-                           virtual_dimensions: (u32, u32),
-                           image_dimensions: (u32, u32))
-                           -> HashMap<SpriteObject, SpriteData> {
+    fn parse_sprites_descr<D1, D2>(image_buffer: &image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
+                                   virtual_dimensions: D1,
+                                   image_dimensions: D2)
+                                   -> HashMap<SpriteObject, SpriteData>
+        where D1: Into<Dimensions>,
+              D2: Into<Dimensions>
+    {
         use std::str::FromStr;
         use std::cmp::{min, max};
+
+        let image_dimensions = image_dimensions.into();
+        let virtual_dimensions = virtual_dimensions.into().as_f32();
 
         let mut result = HashMap::new();
         for line in SPRITES_DESCR.lines() {
@@ -119,40 +130,43 @@ impl SpritesData {
             let frames_count = u32::from_str(words[5])
                 .expect("Can't parse an int from sprite description");
 
-            let half_pixel_widht = (1.0 / width as f32) / 2.0;
-            let half_pixel_height = (1.0 / height as f32) / 2.0;
+            let half_pixel_size = FPoint::new(1.0, 1.0) / virtual_dimensions /
+                                  FPoint::new(2.0, 2.0);
+
             let convex =
                 convex::calculate_convex(image_buffer, (offset_x, offset_y), (width, height));
 
             let (left, top, right, bottom) = convex.iter().fold((width - 1, height - 1, 0, 0),
-                                                                |(left, top, right, bottom),
-                                                                 &(x, y)| {
-                let x = x as u32;
-                let y = y as u32;
+                                                                |(left, top, right, bottom), p| {
+                let x = p.x() as u32;
+                let y = p.y() as u32;
                 (min(left, x), min(top, y), max(right, x), max(bottom, y))
             });
+
             let hitbox = Hitbox {
                 left: left as f32 / width as f32,
                 top: top as f32 / height as f32,
                 right: (right + 1) as f32 / width as f32,
                 bottom: (bottom + 1) as f32 / height as f32,
             };
+
+            let image_size = FPoint::new(width as f32, height as f32);
+
             let convex = convex.into_iter()
-                .map(|(x, y)| {
-                    (x as f32 / width as f32 + half_pixel_widht,
-                     (height as i32 - y) as f32 / height as f32 + half_pixel_height)
+                .map(|p| {
+                    IPoint::new(p.x() - width as i32 / 2, height as i32 / 2 - p.y()).as_f32() /
+                    virtual_dimensions + half_pixel_size
                 })
                 .collect();
 
             result.insert(object,
                           SpriteData {
-                              image_offset: [offset_x as f32 / image_dimensions.0 as f32,
-                                             (image_dimensions.1 - offset_y - height) as f32 /
-                                             image_dimensions.1 as f32],
-                              image_size: [width as f32 / image_dimensions.0 as f32,
-                                           height as f32 / image_dimensions.1 as f32],
-                              virtual_size: [width as f32 / virtual_dimensions.0 as f32,
-                                             height as f32 / virtual_dimensions.1 as f32],
+                              image_offset:
+                                  FPoint::new(offset_x as f32,
+                                              (image_dimensions.y() - offset_y - height) as f32) /
+                                  image_dimensions.as_f32(),
+                              image_size: image_size / image_dimensions.as_f32(),
+                              virtual_size: image_size / virtual_dimensions,
                               frames_count: frames_count,
                               hitbox: hitbox,
                               convex: convex,
@@ -164,29 +178,31 @@ impl SpritesData {
 }
 
 impl SpritesData {
-    pub fn new(virtual_dimensions: (u32, u32)) -> SpritesData {
+    pub fn new<D>(virtual_dimensions: D) -> SpritesData
+        where D: Into<Dimensions>
+    {
         use std;
 
         let image_buffer = image::load(std::io::Cursor::new(SPRITES_IMAGE), image::PNG)
             .expect("Can't read png texture")
             .to_rgba();
-        let image_dimensions = image_buffer.dimensions();
+        let image_dimensions: UPoint = image_buffer.dimensions().into();
         SpritesData::from_image_buffer(image_buffer, virtual_dimensions, image_dimensions)
     }
 
-    pub fn get_sprite_data(&self, object: SpriteObject) -> Option<&SpriteData> {
+    pub fn sprite_data(&self, object: SpriteObject) -> Option<&SpriteData> {
         self.sprites.get(&object)
     }
 
-    pub fn get_image_buffer(&self) -> Vec<u8> {
+    pub fn image_buffer(&self) -> Vec<u8> {
         self.image_buffer.clone()
     }
 
-    pub fn get_image_size(&self) -> (u32, u32) {
+    pub fn image_size(&self) -> Dimensions {
         self.image_size
     }
 
-    pub fn get_sprite_objects(&self) -> Keys<SpriteObject, SpriteData> {
+    pub fn sprite_objects(&self) -> Keys<SpriteObject, SpriteData> {
         self.sprites.keys()
     }
 }

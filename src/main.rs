@@ -4,6 +4,7 @@ extern crate glium;
 extern crate cgmath;
 extern crate image;
 
+mod util;
 mod input;
 mod sprites;
 mod collision;
@@ -37,12 +38,11 @@ fn main() {
     let virtual_dimensions = (VIRTUAL_WIDHT, VIRTUAL_HEIGHT);
     let frame_rate_loop_duration = Duration::from_millis(1_000u64 / FRAME_RATE);
     let sprites = sprites::SpritesData::new(virtual_dimensions);
+    println!("{:?}", sprites.sprite_data(sprites::SpriteObject::Player));
     println!("{:?}",
-             sprites.get_sprite_data(sprites::SpriteObject::Player));
+             sprites.sprite_data(sprites::SpriteObject::EnemyBullet));
     println!("{:?}",
-             sprites.get_sprite_data(sprites::SpriteObject::EnemyBullet));
-    println!("{:?}",
-             sprites.get_sprite_data(sprites::SpriteObject::PlayerBullet));
+             sprites.sprite_data(sprites::SpriteObject::PlayerBullet));
     let mut scene = scene::Scene::new(&sprites);
     let window = create_window();
     let mut input_poller = input::InputPoller::new(window.get_window()

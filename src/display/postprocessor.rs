@@ -1,4 +1,5 @@
 use glium;
+use ::util::Dimensions;
 
 const POSTPROCESSOR_VERTEX_SHADER: &'static str = include_str!("../shaders/v_post.glsl");
 
@@ -36,20 +37,24 @@ pub struct PostProcessor {
     texture: glium::texture::Texture2d,
     shape: glium::VertexBuffer<PostprocessorVertex>,
     indices: glium::IndexBuffer<u16>,
-    virtual_dimensions: (u32, u32),
+    virtual_dimensions: Dimensions,
 }
 
 impl PostProcessor {
-    pub fn new<F>(facade: &F, dimentions: (u32, u32)) -> PostProcessor
-        where F: glium::backend::Facade
+    pub fn new<F, D>(facade: &F, dimensions: D) -> PostProcessor
+        where F: glium::backend::Facade,
+              D: Into<Dimensions>
     {
+        let dimensions = dimensions.into();
         PostProcessor {
             program: glium::Program::from_source(facade,
                                                  POSTPROCESSOR_VERTEX_SHADER,
                                                  POSTPROCESSOR_FRAGMENT_SHADER,
                                                  None)
                 .expect("Can't initialize program"),
-            texture: glium::texture::Texture2d::empty(facade, dimentions.0, dimentions.1)
+            texture: glium::texture::Texture2d::empty(facade,
+                                                      dimensions.width(),
+                                                      dimensions.height())
                 .expect("Can't create empty texture"),
             shape: glium::vertex::VertexBuffer::new(facade, &POSTPROCESSOR_VERTICES)
                 .expect("Can't initialize backgroudn vertex buffer"),
@@ -57,7 +62,7 @@ impl PostProcessor {
                                                     glium::index::PrimitiveType::TrianglesList,
                                                     &POSTPROCESSOR_INDICES)
                 .expect("Can't build index buffer"),
-            virtual_dimensions: dimentions,
+            virtual_dimensions: dimensions,
         }
     }
 
@@ -76,8 +81,8 @@ impl PostProcessor {
                 .wrap_function(glium::uniforms::SamplerWrapFunction::Repeat)
                 .magnify_filter(glium::uniforms::MagnifySamplerFilter::Nearest)
                 .minify_filter(glium::uniforms::MinifySamplerFilter::Nearest),
-            u_virtual_width: self.virtual_dimensions.0,
-            u_virtual_height: self.virtual_dimensions.1,
+            u_virtual_width: self.virtual_dimensions.x(),
+            u_virtual_height: self.virtual_dimensions.y(),
         };
         surface.draw(&self.shape,
                   &self.indices,

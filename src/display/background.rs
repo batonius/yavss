@@ -1,4 +1,5 @@
 use glium;
+use util::{FDimensions, FPoint};
 
 const BACKGROUND_TILES_COUNT: usize = 3;
 
@@ -38,8 +39,8 @@ pub struct Background {
     shape: glium::VertexBuffer<BackgroundVertex>,
     indices: glium::IndexBuffer<u16>,
     program: glium::Program,
-    sprite_offset: [f32; 2],
-    sprite_dimensions: [f32; 2],
+    sprite_offset: FPoint,
+    sprite_dimensions: FDimensions,
     frames_count: u32,
 }
 
@@ -47,9 +48,8 @@ impl Background {
     pub fn new<F>(facade: &F, sprites_data: &::sprites::SpritesData) -> Background
         where F: glium::backend::Facade
     {
-        let background_sprite_data =
-            sprites_data.get_sprite_data(::sprites::SpriteObject::Background)
-                .expect("Can't get background sprite");
+        let background_sprite_data = sprites_data.sprite_data(::sprites::SpriteObject::Background)
+            .expect("Can't get background sprite");
         Background {
             shape: glium::vertex::VertexBuffer::new(facade, &BACKGROUND_VERTICES)
                 .expect("Can't initialize backgroudn vertex buffer"),
@@ -62,9 +62,9 @@ impl Background {
                                                  BACKGROUND_FRAGMENT_SHADER,
                                                  None)
                 .expect("Can't initialize program"),
-            sprite_offset: background_sprite_data.get_image_offset(),
-            sprite_dimensions: background_sprite_data.get_image_size(),
-            frames_count: background_sprite_data.get_frames_count(),
+            sprite_offset: background_sprite_data.image_offset(),
+            sprite_dimensions: background_sprite_data.image_size(),
+            frames_count: background_sprite_data.frames_count(),
         }
     }
 
@@ -78,6 +78,8 @@ impl Background {
 
         let u_translation: [[f32; 4]; 4] =
             cgmath::Matrix4::from_translation(cgmath::vec3(0.0, -position, 0.0)).into();
+        let u_offset: [f32; 2] = self.sprite_offset.into();
+        let u_dimensions: [f32; 2] = self.sprite_dimensions.into();
         let uniforms = uniform! {
             u_transform: u_translation,
             t_sprites: sprites_texture.sampled().anisotropy(1)
@@ -85,8 +87,8 @@ impl Background {
                 .magnify_filter(glium::uniforms::MagnifySamplerFilter::Nearest)
                 .minify_filter(glium::uniforms::MinifySamplerFilter::Nearest),
             u_frames_count: self.frames_count as f32,
-            u_offset: self.sprite_offset,
-            u_dimensions: self.sprite_dimensions,
+            u_offset: u_offset,
+            u_dimensions: u_dimensions,
         };
         surface.draw(&self.shape,
                   &self.indices,

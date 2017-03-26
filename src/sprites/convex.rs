@@ -1,25 +1,30 @@
 use image;
+use util::{IPoint, Dimensions};
 
-pub type Point = (i32, i32);
-
-pub fn calculate_convex(image_buffer: &image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
-                        offset: (u32, u32),
-                        size: (u32, u32))
-                        -> Vec<Point> {
+pub fn calculate_convex<D1, D2>(image_buffer: &image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
+                                offset: D1,
+                                size: D2)
+                                -> Vec<IPoint>
+    where D1: Into<Dimensions>,
+          D2: Into<Dimensions>
+{
     use std::u8;
 
+    let offset = offset.into();
+    let size = size.into();
+
     let mut result = vec![];
-    let offset_x = offset.0 as i32;
-    let offset_y = offset.1 as i32;
-    let width = size.0 as i32;
-    let height = size.1 as i32;
-    let mut convex_point = (0, 0);
+    let offset_x = offset.x() as i32;
+    let offset_y = offset.y() as i32;
+    let width = size.x() as i32;
+    let height = size.y() as i32;
+    let mut convex_point = IPoint::new(0, 0);
     let mut top_right_found = false;
 
     'top_right_loop: for y in 0..height {
         for x in (0..width).rev() {
             if image_buffer.get_pixel((offset_x + x) as u32, (offset_y + y) as u32)[3] != u8::MIN {
-                convex_point = (x, y);
+                convex_point = IPoint::new(x, y);
                 top_right_found = true;
                 break 'top_right_loop;
             }
@@ -32,10 +37,10 @@ pub fn calculate_convex(image_buffer: &image::ImageBuffer<image::Rgba<u8>, Vec<u
     let start_convex = convex_point;
     let mut prev_convex = convex_point;
 
-    for boundary_point in BoundaryIterator::new(width, height, (width - 1, convex_point.1)) {
+    for boundary_point in BoundaryIterator::new(width, height, (width - 1, convex_point.x())) {
         for point in LineIterator::new(boundary_point, convex_point) {
-            if image_buffer.get_pixel((offset_x + point.0) as u32,
-                           (offset_y + point.1) as u32)[3] !=
+            if image_buffer.get_pixel((offset_x + point.x()) as u32,
+                           (offset_y + point.y()) as u32)[3] !=
                u8::MIN {
                 if prev_convex != convex_point &&
                    !is_points_on_line(prev_convex, convex_point, point) {
@@ -55,16 +60,22 @@ pub fn calculate_convex(image_buffer: &image::ImageBuffer<image::Rgba<u8>, Vec<u
     return result;
 }
 
-fn is_points_on_line(a: Point, b: Point, c: Point) -> bool {
-    if a.0 == b.0 {
-        b.0 == c.0
-    } else if a.1 == b.1 {
-        b.1 == c.1
+fn is_points_on_line<P1, P2, P3>(a: P1, b: P2, c: P3) -> bool
+    where P1: Into<IPoint>,
+          P2: Into<IPoint>,
+          P3: Into<IPoint>
+{
+    let a = a.into();
+    let b = b.into();
+    let c = c.into();
+
+    if a.x() == b.x() {
+        b.x() == c.x()
+    } else if a.y() == b.y() {
+        b.y() == c.y()
     } else {
-        let ab_x_delta = b.0 - a.0;
-        let ab_y_delta = b.1 - a.1;
-        let bc_x_delta = c.0 - b.0;
-        let bc_y_delta = c.1 - b.1;
+        let (ab_x_delta, ab_y_delta) = (b - a).into();
+        let (bc_x_delta, bc_y_delta) = (c - b).into();
 
         ab_x_delta.abs() == ab_y_delta.abs() && bc_x_delta.abs() == bc_y_delta.abs() &&
         ab_x_delta.signum() == bc_x_delta.signum() &&
@@ -73,14 +84,17 @@ fn is_points_on_line(a: Point, b: Point, c: Point) -> bool {
 }
 
 struct BoundaryIterator {
-    from_point: Point,
-    cur_point: Point,
+    from_point: IPoint,
+    cur_point: IPoint,
     max_x: i32,
     max_y: i32,
 }
 
 impl BoundaryIterator {
-    pub fn new(width: i32, height: i32, from_point: Point) -> BoundaryIterator {
+    pub fn new<P>(width: i32, height: i32, from_point: P) -> BoundaryIterator
+        where P: Into<IPoint>
+    {
+        let from_point = from_point.into();
         BoundaryIterator {
             from_point: from_point,
             cur_point: from_point,
@@ -91,10 +105,10 @@ impl BoundaryIterator {
 }
 
 impl Iterator for BoundaryIterator {
-    type Item = Point;
+    type Item = IPoint;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let delta = match (self.cur_point.0, self.cur_point.1) {
+        let delta = match self.cur_point.into() {
             (0, 0) => (1, 0),
             (0, h) if h == self.max_y => (0, -1),
             (w, 0) if w == self.max_x => (0, 1),
@@ -106,8 +120,7 @@ impl Iterator for BoundaryIterator {
             (_, _) => (0, 0),
         };
 
-        self.cur_point.0 += delta.0;
-        self.cur_point.1 += delta.1;
+        self.cur_point += IPoint::from(delta);
 
         if self.cur_point == self.from_point {
             None
@@ -119,11 +132,11 @@ impl Iterator for BoundaryIterator {
 
 #[derive(Debug, PartialEq, Eq)]
 struct LineIterator {
-    from: Point,
-    to: Point,
-    cur: Point,
-    main_step: Point,
-    secondary_step: Point,
+    from: IPoint,
+    to: IPoint,
+    cur: IPoint,
+    main_step: IPoint,
+    secondary_step: IPoint,
     max_delta: i32,
     min_delta: i32,
     steps_taken: i32,
@@ -131,27 +144,33 @@ struct LineIterator {
 }
 
 impl LineIterator {
-    pub fn new(from: Point, to: Point) -> LineIterator {
+    pub fn new<P1, P2>(from: P1, to: P2) -> LineIterator
+        where P1: Into<IPoint>,
+              P2: Into<IPoint>
+    {
         use std::cmp::{max, min};
-        let delta = (to.0 - from.0, to.1 - from.1);
-        let mut main_step = (0, 0);
-        let mut secondary_step = (0, 0);
+        let from = from.into();
+        let to = to.into();
+        let delta = to - from;
 
-        match delta {
+        let mut main_step = IPoint::new(0, 0);
+        let mut secondary_step = IPoint::new(0, 0);
+
+        match delta.into() {
             (0, 0) => {}
             (0, y_delta) => {
-                main_step = (0, y_delta.signum());
+                main_step = IPoint::new(0, y_delta.signum());
             }
             (x_delta, 0) => {
-                main_step = (x_delta.signum(), 0);
+                main_step = IPoint::new(x_delta.signum(), 0);
             }
             (x_delta, y_delta) => {
                 if x_delta.abs() >= y_delta.abs() {
-                    main_step = (x_delta.signum(), 0);
-                    secondary_step = (0, y_delta.signum());
+                    main_step = IPoint::new(x_delta.signum(), 0);
+                    secondary_step = IPoint::new(0, y_delta.signum());
                 } else {
-                    main_step = (0, y_delta.signum());
-                    secondary_step = (x_delta.signum(), 0);
+                    main_step = IPoint::new(0, y_delta.signum());
+                    secondary_step = IPoint::new(x_delta.signum(), 0);
                 }
             }
         }
@@ -162,33 +181,32 @@ impl LineIterator {
             cur: from,
             main_step: main_step,
             secondary_step: secondary_step,
-            max_delta: max(delta.0.abs(), delta.1.abs()),
-            min_delta: min(delta.0.abs(), delta.1.abs()),
+            max_delta: max(delta.x().abs(), delta.y().abs()),
+            min_delta: min(delta.x().abs(), delta.y().abs()),
             steps_taken: 1,
             secondary_steps_taken: 0,
         }
     }
 
     fn advance(&mut self) {
-        self.cur.0 += self.main_step.0;
-        self.cur.1 += self.main_step.1;
+        self.cur += self.main_step;
+
         self.steps_taken += 1;
 
-        if self.secondary_step == (0, 0) {
+        if self.secondary_step == IPoint::new(0, 0) {
             return;
         }
 
         if self.steps_taken * (self.min_delta + 1) / (1 + self.secondary_steps_taken) >
            self.max_delta + 1 {
-            self.cur.0 += self.secondary_step.0;
-            self.cur.1 += self.secondary_step.1;
+            self.cur += self.secondary_step;
             self.secondary_steps_taken += 1;
         }
     }
 }
 
 impl Iterator for LineIterator {
-    type Item = Point;
+    type Item = IPoint;
 
     fn next(&mut self) -> Option<Self::Item> {
         let result = if self.cur == self.to {
@@ -200,42 +218,5 @@ impl Iterator for LineIterator {
         self.advance();
 
         return result;
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use ::sprites::convex;
-
-    #[test]
-    fn test_boundary_iterator() {
-        let bi = convex::BoundaryIterator::new(3, 3, (0, 0));
-        assert!(bi.eq([(1i32, 0i32), (2, 0), (2, 1), (2, 2), (1, 2), (0, 2), (0, 1)]
-            .into_iter()
-            .map(|&v| v)));
-    }
-
-    #[test]
-    fn line_test() {
-        let li = convex::LineIterator::new((1, 0), (6, 3));
-        assert!(li.eq([(1i32, 0i32), (2, 1), (3, 1), (4, 2), (5, 2)]
-            .into_iter()
-            .map(|&v| v)));
-        let li = convex::LineIterator::new((1, 1), (6, 3));
-        assert!(li.eq([(1i32, 1i32), (2, 1), (3, 2), (4, 2), (5, 3)]
-            .into_iter()
-            .map(|&v| v)));
-        let li = convex::LineIterator::new((1, 2), (6, 3));
-        assert!(li.eq([(1i32, 2i32), (2, 2), (3, 2), (4, 3), (5, 3)]
-            .into_iter()
-            .map(|&v| v)));
-        let li = convex::LineIterator::new((1, 3), (6, 3));
-        assert!(li.eq([(1i32, 3i32), (2, 3), (3, 3), (4, 3), (5, 3)]
-            .into_iter()
-            .map(|&v| v)));
-        let li = convex::LineIterator::new((6, 3), (6, 0));
-        assert!(li.eq([(6i32, 3i32), (6, 2), (6, 1)]
-            .into_iter()
-            .map(|&v| v)));
     }
 }
