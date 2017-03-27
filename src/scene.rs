@@ -1,7 +1,7 @@
 use std::time::Duration;
 use input::InputPoller;
 use sprites::{SpriteObject, SpriteData, SpritesData};
-use collision::detect_collisions;
+use collision::{detect_collisions, CollisionData};
 use util::{Angle, FPoint};
 
 type CoordValue = f32;
@@ -26,24 +26,48 @@ pub enum ObjectType {
     EnemyBullet(u32),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct SceneObject {
     pub object_type: ObjectType,
     pub pos: FPoint,
-    pub angle: Angle,
+    pub direction_angle: Angle,
     pub to_delete: bool,
+
+    sprite_angle: Angle,
+    collision_data: CollisionData,
 }
 
 impl SceneObject {
-    pub fn new<P>(object_type: ObjectType, pos: P, angle: Angle) -> SceneObject
+    pub fn new<P>(sprites_data_cache: &SpriteDataCache,
+                  object_type: ObjectType,
+                  pos: P,
+                  sprite_angle: Angle)
+                  -> SceneObject
         where P: Into<FPoint>
     {
         SceneObject {
             object_type: object_type,
             pos: pos.into(),
-            angle: angle,
+            direction_angle: Angle::from_deg(sprite_angle.as_deg() + 90.0),
             to_delete: false,
+            sprite_angle: sprite_angle,
+            collision_data: CollisionData::new(sprites_data_cache.sprite_data(&object_type),
+                                               sprite_angle),
         }
+    }
+
+    pub fn sprite_angle(&self) -> Angle {
+        self.sprite_angle
+    }
+
+    pub fn collision_data(&self) -> &CollisionData {
+        &self.collision_data
+    }
+
+    pub fn set_sprite_angle(&mut self, sprites_data_cache: &SpriteDataCache, sprite_angle: Angle) {
+        self.collision_data = CollisionData::new(sprites_data_cache.sprite_data(&self.object_type),
+                                                 sprite_angle);
+        self.sprite_angle = sprite_angle;
     }
 }
 
@@ -153,19 +177,22 @@ impl<'a> Scene<'a> {
     pub fn new(sprites_data: &'a SpritesData) -> Scene<'a> {
         let speeds = SpeedValues::default();
         let bullets_timeout = speeds.bullet_shooting_speed + 1.0;
+        let sprite_data_cache = SpriteDataCache::new(sprites_data);
+        let player_scene_object = SceneObject::new(&sprite_data_cache,
+                                                   ObjectType::Player(PlayerState::Normal),
+                                                   (0.5, 0.2),
+                                                   Angle::from_deg(0.0));
         Scene {
             speeds: speeds,
             background_position: 0.0,
-            player_scene_object: SceneObject::new(ObjectType::Player(PlayerState::Normal),
-                                                  (0.5, 0.2),
-                                                  Angle::from_deg(0.0)),
+            player_scene_object: player_scene_object,
             bullets_frame: 0.0,
             sprites_data: sprites_data,
             firing_timeout: bullets_timeout,
             player_bullets: vec![],
             enemy_bullets: vec![],
             new_bullet_timeout: bullets_timeout,
-            sprite_data_cache: SpriteDataCache::new(sprites_data),
+            sprite_data_cache: sprite_data_cache,
         }
     }
 
@@ -193,7 +220,8 @@ impl<'a> Scene<'a> {
         self.new_bullet_timeout += duration_s;
         if self.new_bullet_timeout >= self.speeds.bullet_shooting_speed * 3.0 {
             self.new_bullet_timeout = 0.0;
-            self.enemy_bullets.push(SceneObject::new(ObjectType::EnemyBullet(0),
+            self.enemy_bullets.push(SceneObject::new(&self.sprite_data_cache,
+                                                     ObjectType::EnemyBullet(0),
                                                      (self.player_scene_object.pos.x(),
                                                       MAX_Y_VALUE),
                                                      Angle::from_deg(-180.0)))
@@ -204,31 +232,34 @@ impl<'a> Scene<'a> {
         self.firing_timeout += duration_s;
         if input.fire_is_pressed() && self.firing_timeout >= self.speeds.bullet_shooting_speed {
             self.firing_timeout = 0.0;
-            let adjusted_angle = Angle::from_deg(-1.0 * self.player_scene_object.angle.as_deg());
-            self.player_bullets.push(SceneObject::new(ObjectType::PlayerBullet(0),
+            let adjusted_angle = self.player_scene_object.sprite_angle();
+            self.player_bullets.push(SceneObject::new(&self.sprite_data_cache,
+                                                      ObjectType::PlayerBullet(0),
                                                       self.player_scene_object.pos,
                                                       adjusted_angle));
-            self.player_bullets.push(SceneObject::new(ObjectType::PlayerBullet(0),
+            self.player_bullets.push(SceneObject::new(&self.sprite_data_cache,
+                                                      ObjectType::PlayerBullet(0),
                                                       self.player_scene_object.pos,
                                                       adjusted_angle.add_deg(20.0)));
-            self.player_bullets.push(SceneObject::new(ObjectType::PlayerBullet(0),
+            self.player_bullets.push(SceneObject::new(&self.sprite_data_cache,
+                                                      ObjectType::PlayerBullet(0),
                                                       self.player_scene_object.pos,
                                                       adjusted_angle.add_deg(-20.0)));
         }
     }
 
     fn move_player(&mut self, input: &InputPoller, duration_s: f32) {
-        let player_virtual_hitbox = self.sprite_data_cache
-            .sprite_data(&self.player_scene_object.object_type)
-            .virtual_hitbox();
         let (mut x, mut y) = self.player_scene_object.pos.into();
         let x_move = input.x_move();
-        x += x_move * self.speeds.x_speed * (duration_s as CoordValue);
-        x = x.min(MAX_X_VALUE - player_virtual_hitbox.right)
-            .max(MIN_X_VALUE + player_virtual_hitbox.left);
-        y += input.y_move() * self.speeds.y_speed * (duration_s as CoordValue);
-        y = y.min(MAX_Y_VALUE - player_virtual_hitbox.top)
-            .max(MIN_Y_VALUE + player_virtual_hitbox.bottom);
+        {
+            let player_virtual_hitbox = self.player_scene_object.collision_data().hitbox();
+            x += x_move * self.speeds.x_speed * (duration_s as CoordValue);
+            x = x.min(MAX_X_VALUE - player_virtual_hitbox.right)
+                .max(MIN_X_VALUE + player_virtual_hitbox.left);
+            y += input.y_move() * self.speeds.y_speed * (duration_s as CoordValue);
+            y = y.min(MAX_Y_VALUE - player_virtual_hitbox.top)
+                .max(MIN_Y_VALUE + player_virtual_hitbox.bottom);
+        }
         self.player_scene_object.pos = FPoint::new(x, y);
         if x_move < -0.2 {
             self.player_scene_object.object_type = ObjectType::Player(PlayerState::TiltedLeft);
@@ -238,8 +269,11 @@ impl<'a> Scene<'a> {
             self.player_scene_object.object_type = ObjectType::Player(PlayerState::Normal);
         }
 
-        let total_tilt = (input.right_tilt() - input.left_tilt()) * 90.0;
-        self.player_scene_object.angle = Angle::from_deg(total_tilt);
+        let total_tilt = (input.left_tilt() - input.right_tilt()) * 90.0;
+        if (total_tilt - self.player_scene_object.sprite_angle().as_deg()).abs() > 1.0 {
+            self.player_scene_object
+                .set_sprite_angle(&self.sprite_data_cache, Angle::from_deg(total_tilt));
+        }
     }
 
     fn move_background(&mut self, duration_s: f32) {
@@ -271,11 +305,11 @@ impl<'a> Scene<'a> {
     fn move_objects(objects: &mut Vec<SceneObject>, speed: f32, duration_s: f32) {
         for object in objects.iter_mut() {
             let distance = speed * duration_s;
-            let direction_angle = Angle::from_deg(object.angle.as_deg() + 90.0).as_rad();
+            let direction_angle = object.direction_angle.as_rad();
             *object.pos.mut_x() += direction_angle.cos() * distance;
             *object.pos.mut_y() += direction_angle.sin() * distance;
         }
-        objects.retain(|&object| {
+        objects.retain(|object| {
             object.pos.x() >= MIN_X_VALUE || object.pos.x() <= MAX_X_VALUE ||
             object.pos.y() >= MIN_Y_VALUE || object.pos.y() <= MAX_Y_VALUE
         });
@@ -284,19 +318,15 @@ impl<'a> Scene<'a> {
     fn detect_collisions(&mut self) {
         use std::iter;
 
-        detect_collisions(&self.sprite_data_cache,
-                          &mut self.enemy_bullets,
+        detect_collisions(&mut self.enemy_bullets,
                           iter::once(&mut self.player_scene_object),
                           |a, _| {
                               a.to_delete = true;
                           });
-        detect_collisions(&self.sprite_data_cache,
-                          &mut self.enemy_bullets,
-                          &mut self.player_bullets,
-                          |a, b| {
-                              a.to_delete = true;
-                              b.to_delete = true;
-                          });
+        detect_collisions(&mut self.enemy_bullets, &mut self.player_bullets, |a, b| {
+            a.to_delete = true;
+            b.to_delete = true;
+        });
         self.enemy_bullets.retain(|bullet| !bullet.to_delete);
         self.player_bullets.retain(|bullet| !bullet.to_delete);
     }

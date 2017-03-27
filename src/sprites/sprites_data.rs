@@ -15,20 +15,11 @@ pub enum SpriteObject {
     EnemyBullet,
 }
 
-#[derive(Debug, Copy, Clone)]
-pub struct Hitbox {
-    pub left: f32,
-    pub top: f32,
-    pub right: f32,
-    pub bottom: f32,
-}
-
 #[derive(Debug)]
 pub struct SpriteData {
     image_offset: FPoint,
     image_size: FDimensions,
     virtual_size: FDimensions,
-    hitbox: Hitbox,
     frames_count: u32,
     convex: Vec<FPoint>,
 }
@@ -50,13 +41,8 @@ impl SpriteData {
         self.frames_count
     }
 
-    pub fn virtual_hitbox(&self) -> Hitbox {
-        Hitbox {
-            left: self.virtual_size.width() * (0.5 - self.hitbox.left),
-            top: self.virtual_size.height() * (0.5 - self.hitbox.top),
-            right: self.virtual_size.width() * (self.hitbox.right - 0.5),
-            bottom: self.virtual_size.height() * (self.hitbox.bottom - 0.5),
-        }
+    pub fn convex(&self) -> &Vec<FPoint> {
+        &self.convex
     }
 }
 
@@ -103,7 +89,6 @@ impl SpritesData {
               D2: Into<Dimensions>
     {
         use std::str::FromStr;
-        use std::cmp::{min, max};
 
         let image_dimensions = image_dimensions.into();
         let virtual_dimensions = virtual_dimensions.into().as_f32();
@@ -136,20 +121,6 @@ impl SpritesData {
             let convex =
                 convex::calculate_convex(image_buffer, (offset_x, offset_y), (width, height));
 
-            let (left, top, right, bottom) = convex.iter().fold((width - 1, height - 1, 0, 0),
-                                                                |(left, top, right, bottom), p| {
-                let x = p.x() as u32;
-                let y = p.y() as u32;
-                (min(left, x), min(top, y), max(right, x), max(bottom, y))
-            });
-
-            let hitbox = Hitbox {
-                left: left as f32 / width as f32,
-                top: top as f32 / height as f32,
-                right: (right + 1) as f32 / width as f32,
-                bottom: (bottom + 1) as f32 / height as f32,
-            };
-
             let image_size = FPoint::new(width as f32, height as f32);
 
             let convex = convex.into_iter()
@@ -168,7 +139,6 @@ impl SpritesData {
                               image_size: image_size / image_dimensions.as_f32(),
                               virtual_size: image_size / virtual_dimensions,
                               frames_count: frames_count,
-                              hitbox: hitbox,
                               convex: convex,
                           });
         }

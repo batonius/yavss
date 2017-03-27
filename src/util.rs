@@ -177,7 +177,7 @@ impl Angle {
     }
 
     pub fn as_deg(&self) -> f32 {
-        self.rad * 180.0 / f32::consts::PI
+        (self.rad * 180.0 / f32::consts::PI) % 360.0
     }
 
     pub fn add_deg(&self, deg: f32) -> Angle {
