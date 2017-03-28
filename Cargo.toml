@@ -8,3 +8,12 @@ glium = "0.16"
 cgmath = "0.12"
 gilrs = "0.4.3"
 image = "0.12"
+
+[profile.release]
+opt-level = 3
+debug = true
+rpath = false
+lto = true
+debug-assertions = false
+codegen-units = 1
+panic = 'unwind'

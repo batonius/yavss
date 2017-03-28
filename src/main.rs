@@ -27,7 +27,7 @@ fn create_window() -> glium::backend::glutin_backend::GlutinFacade {
         .with_gl(glutin::GlRequest::Latest)
         .with_gl_profile(glutin::GlProfile::Core)
         .with_vsync()
-        .with_title("gliumpad")
+        .with_title("yavss")
         .build_glium()
         .expect("Can't create gluim window")
 }
@@ -38,11 +38,6 @@ fn main() {
     let virtual_dimensions = (VIRTUAL_WIDHT, VIRTUAL_HEIGHT);
     let frame_rate_loop_duration = Duration::from_millis(1_000u64 / FRAME_RATE);
     let sprites = sprites::SpritesData::new(virtual_dimensions);
-    println!("{:?}", sprites.sprite_data(sprites::SpriteObject::Player));
-    println!("{:?}",
-             sprites.sprite_data(sprites::SpriteObject::EnemyBullet));
-    println!("{:?}",
-             sprites.sprite_data(sprites::SpriteObject::PlayerBullet));
     let mut scene = scene::Scene::new(&sprites);
     let window = create_window();
     let mut input_poller = input::InputPoller::new(window.get_window()
@@ -74,10 +69,11 @@ fn main() {
         if frame_counter >= FRAMES_TO_COUNT {
             let new_frame_instant = Instant::now();
             let duration = new_frame_instant - frame_counter_instant;
-            println!("{} fps",
+            println!("{} fps, {} objects",
                      frame_counter as f32 /
                      (duration.as_secs() as f32 +
-                      duration.subsec_nanos() as f32 / 1_000_000_000.0));
+                      duration.subsec_nanos() as f32 / 1_000_000_000.0),
+                     scene.total_objects());
             frame_counter = 0;
             frame_counter_instant = Instant::now();
         }

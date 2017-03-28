@@ -196,6 +196,10 @@ impl<'a> Scene<'a> {
         }
     }
 
+    pub fn total_objects(&self) -> usize {
+        self.player_bullets.len() + self.enemy_bullets.len() + 1
+    }
+
     pub fn background_position(&self) -> f32 {
         self.background_position
     }
@@ -224,7 +228,20 @@ impl<'a> Scene<'a> {
                                                      ObjectType::EnemyBullet(0),
                                                      (self.player_scene_object.pos.x(),
                                                       MAX_Y_VALUE),
-                                                     Angle::from_deg(-180.0)))
+                                                     Angle::from_deg(-180.0)));
+            // let bullets_count = 3200;
+            // for x in 0..bullets_count {
+            //     self.enemy_bullets.push(SceneObject::new(&self.sprite_data_cache,
+            //                                              ObjectType::EnemyBullet(0),
+            //                                              (x as f32 / bullets_count as f32,
+            //                                               MAX_Y_VALUE),
+            //                                              Angle::from_deg(-180.0)));
+            //     self.player_bullets.push(SceneObject::new(&self.sprite_data_cache,
+            //                                               ObjectType::PlayerBullet(0),
+            //                                               (x as f32 / bullets_count as f32,
+            //                                                MIN_Y_VALUE),
+            //                                               Angle::from_deg(0.0)));
+            // }
         }
     }
 
