@@ -26,15 +26,17 @@ impl CollisionData {
         let angle_sin = sprite_angle.as_rad().sin();
         let angle_cos = sprite_angle.as_rad().cos();
 
-        let rotated_points = sprite_data.convex()
+        let rotated_points = sprite_data
+            .convex()
             .iter()
             .map(|p| {
-                FPoint::new(p.x() * angle_cos - p.y() * angle_sin,
-                            p.x() * angle_sin + p.y() * angle_cos)
-            })
+                     FPoint::new(p.x() * angle_cos - p.y() * angle_sin,
+                                 p.x() * angle_sin + p.y() * angle_cos)
+                 })
             .collect::<Vec<_>>();
 
-        let (left, top, right, bottom) = rotated_points.iter()
+        let (left, top, right, bottom) = rotated_points
+            .iter()
             .fold((1.0f32, 0.0f32, 0.0f32, 1.0f32),
                   |(left, top, right, bottom), p| {
                       (left.min(p.x()), top.max(p.y()), right.max(p.x()), bottom.min(p.y()))
@@ -121,7 +123,7 @@ fn segment_coords(p: FPoint) -> UPoint {
     use std::cmp::min;
     UPoint::new(min((p.x().max(0.0).min(1.0) * SEGMENTS_SIDE as f32) as u32,
                     SEGMENTS_SIDE - 1),
-                min((p.y().max(0.0).min(1.0) * SEGMENTS_SIDE as f32) as u32,
+                min(((1.0 - p.y()).max(0.0).min(1.0) * SEGMENTS_SIDE as f32) as u32,
                     SEGMENTS_SIDE - 1))
 }
 

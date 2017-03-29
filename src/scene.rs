@@ -94,8 +94,7 @@ impl Default for SpeedValues {
     }
 }
 
-pub struct SceneIterator<'a>
-{
+pub struct SceneIterator<'a> {
     player_bullets: <&'a Vec<SceneObject> as IntoIterator>::IntoIter,
     enemy_bullets: <&'a Vec<SceneObject> as IntoIterator>::IntoIter,
     player: &'a SceneObject,
@@ -122,12 +121,16 @@ impl<'a> Iterator for SceneIterator<'a> {
         if self.empty {
             None
         } else {
-            self.player_bullets.next().or_else(|| {
-                self.enemy_bullets.next().or_else(|| {
-                    self.empty = true;
-                    Some(self.player)
-                })
-            })
+            self.player_bullets
+                .next()
+                .or_else(|| {
+                             self.enemy_bullets
+                                 .next()
+                                 .or_else(|| {
+                                              self.empty = true;
+                                              Some(self.player)
+                                          })
+                         })
         }
     }
 }
@@ -143,9 +146,11 @@ impl<'a> SpriteDataCache<'a> {
     pub fn new(sprites_data: &'a SpritesData) -> SpriteDataCache<'a> {
         SpriteDataCache {
             player_sprite_data: sprites_data.sprite_data(SpriteObject::Player).unwrap(),
-            player_bullet_sprite_data: sprites_data.sprite_data(SpriteObject::PlayerBullet)
+            player_bullet_sprite_data: sprites_data
+                .sprite_data(SpriteObject::PlayerBullet)
                 .unwrap(),
-            enemy_bullet_sprite_data: sprites_data.sprite_data(SpriteObject::EnemyBullet)
+            enemy_bullet_sprite_data: sprites_data
+                .sprite_data(SpriteObject::EnemyBullet)
                 .unwrap(),
         }
     }
@@ -224,11 +229,11 @@ impl<'a> Scene<'a> {
         self.new_bullet_timeout += duration_s;
         if self.new_bullet_timeout >= self.speeds.bullet_shooting_speed * 3.0 {
             self.new_bullet_timeout = 0.0;
-            self.enemy_bullets.push(SceneObject::new(&self.sprite_data_cache,
-                                                     ObjectType::EnemyBullet(0),
-                                                     (self.player_scene_object.pos.x(),
-                                                      MAX_Y_VALUE),
-                                                     Angle::from_deg(-180.0)));
+            self.enemy_bullets
+                .push(SceneObject::new(&self.sprite_data_cache,
+                                       ObjectType::EnemyBullet(0),
+                                       (self.player_scene_object.pos.x(), MAX_Y_VALUE),
+                                       Angle::from_deg(-180.0)));
             // let bullets_count = 3200;
             // for x in 0..bullets_count {
             //     self.enemy_bullets.push(SceneObject::new(&self.sprite_data_cache,
@@ -250,18 +255,21 @@ impl<'a> Scene<'a> {
         if input.fire_is_pressed() && self.firing_timeout >= self.speeds.bullet_shooting_speed {
             self.firing_timeout = 0.0;
             let adjusted_angle = self.player_scene_object.sprite_angle();
-            self.player_bullets.push(SceneObject::new(&self.sprite_data_cache,
-                                                      ObjectType::PlayerBullet(0),
-                                                      self.player_scene_object.pos,
-                                                      adjusted_angle));
-            self.player_bullets.push(SceneObject::new(&self.sprite_data_cache,
-                                                      ObjectType::PlayerBullet(0),
-                                                      self.player_scene_object.pos,
-                                                      adjusted_angle.add_deg(20.0)));
-            self.player_bullets.push(SceneObject::new(&self.sprite_data_cache,
-                                                      ObjectType::PlayerBullet(0),
-                                                      self.player_scene_object.pos,
-                                                      adjusted_angle.add_deg(-20.0)));
+            self.player_bullets
+                .push(SceneObject::new(&self.sprite_data_cache,
+                                       ObjectType::PlayerBullet(0),
+                                       self.player_scene_object.pos,
+                                       adjusted_angle));
+            self.player_bullets
+                .push(SceneObject::new(&self.sprite_data_cache,
+                                       ObjectType::PlayerBullet(0),
+                                       self.player_scene_object.pos,
+                                       adjusted_angle.add_deg(20.0)));
+            self.player_bullets
+                .push(SceneObject::new(&self.sprite_data_cache,
+                                       ObjectType::PlayerBullet(0),
+                                       self.player_scene_object.pos,
+                                       adjusted_angle.add_deg(-20.0)));
         }
     }
 
@@ -327,9 +335,10 @@ impl<'a> Scene<'a> {
             *object.pos.mut_y() += direction_angle.sin() * distance;
         }
         objects.retain(|object| {
-            object.pos.x() >= MIN_X_VALUE || object.pos.x() <= MAX_X_VALUE ||
-            object.pos.y() >= MIN_Y_VALUE || object.pos.y() <= MAX_Y_VALUE
-        });
+                           object.pos.x() >= MIN_X_VALUE || object.pos.x() <= MAX_X_VALUE ||
+                           object.pos.y() >= MIN_Y_VALUE ||
+                           object.pos.y() <= MAX_Y_VALUE
+                       });
     }
 
     fn detect_collisions(&mut self) {
@@ -337,9 +346,7 @@ impl<'a> Scene<'a> {
 
         detect_collisions(&mut self.enemy_bullets,
                           iter::once(&mut self.player_scene_object),
-                          |a, _| {
-                              a.to_delete = true;
-                          });
+                          |a, _| { a.to_delete = true; });
         detect_collisions(&mut self.enemy_bullets, &mut self.player_bullets, |a, b| {
             a.to_delete = true;
             b.to_delete = true;

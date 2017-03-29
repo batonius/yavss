@@ -4,7 +4,7 @@ use util::{IPoint, Dimensions};
 pub fn calculate_convex<D1, D2>(image_buffer: &image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
                                 offset: D1,
                                 size: D2)
-                                -> Vec<IPoint>
+                                -> Vec<(IPoint, IPoint)>
     where D1: Into<Dimensions>,
           D2: Into<Dimensions>
 {
@@ -19,12 +19,14 @@ pub fn calculate_convex<D1, D2>(image_buffer: &image::ImageBuffer<image::Rgba<u8
     let width = size.x() as i32;
     let height = size.y() as i32;
     let mut convex_point = IPoint::new(0, 0);
+    let mut convex_direction = IPoint::new(0, 0);
     let mut top_right_found = false;
 
     'top_right_loop: for y in 0..height {
         for x in (0..width).rev() {
             if image_buffer.get_pixel((offset_x + x) as u32, (offset_y + y) as u32)[3] != u8::MIN {
                 convex_point = IPoint::new(x, y);
+                convex_direction = IPoint::new(1, if y > height / 2 { 1 } else { 0 });
                 top_right_found = true;
                 break 'top_right_loop;
             }
@@ -36,26 +38,34 @@ pub fn calculate_convex<D1, D2>(image_buffer: &image::ImageBuffer<image::Rgba<u8
 
     let start_convex = convex_point;
     let mut prev_convex = convex_point;
+    let mut prev_direction = convex_direction;
 
-    for boundary_point in BoundaryIterator::new(width, height, (width - 1, convex_point.x())) {
+    for boundary_point in BoundaryIterator::new(width, height, (width - 1, convex_point.y())) {
         for point in LineIterator::new(boundary_point, convex_point) {
             if image_buffer.get_pixel((offset_x + point.x()) as u32,
-                           (offset_y + point.y()) as u32)[3] !=
-               u8::MIN {
+                                      (offset_y + point.y()) as u32)
+                   [3] != u8::MIN {
                 if prev_convex != convex_point &&
                    !is_points_on_line(prev_convex, convex_point, point) {
-                    result.push(prev_convex);
+                    result.push((prev_convex, prev_direction));
                     prev_convex = convex_point;
+                    prev_direction = convex_direction;
                 }
                 convex_point = point;
+                convex_direction = IPoint::new(if boundary_point.x() > width / 2 { 1 } else { 0 },
+                                               if boundary_point.y() > height / 2 {
+                                                   1
+                                               } else {
+                                                   0
+                                               });
                 break;
             }
         }
     }
 
-    result.push(prev_convex);
+    result.push((prev_convex, prev_direction));
     if !is_points_on_line(prev_convex, convex_point, start_convex) {
-        result.push(convex_point);
+        result.push((convex_point, convex_direction));
     }
     return result;
 }

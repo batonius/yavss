@@ -48,7 +48,8 @@ impl Background {
     pub fn new<F>(facade: &F, sprites_data: &::sprites::SpritesData) -> Background
         where F: glium::backend::Facade
     {
-        let background_sprite_data = sprites_data.sprite_data(::sprites::SpriteObject::Background)
+        let background_sprite_data = sprites_data
+            .sprite_data(::sprites::SpriteObject::Background)
             .expect("Can't get background sprite");
         Background {
             shape: glium::vertex::VertexBuffer::new(facade, &BACKGROUND_VERTICES)
@@ -90,7 +91,8 @@ impl Background {
             u_offset: u_offset,
             u_dimensions: u_dimensions,
         };
-        surface.draw(&self.shape,
+        surface
+            .draw(&self.shape,
                   &self.indices,
                   &self.program,
                   &uniforms,

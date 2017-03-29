@@ -1,5 +1,5 @@
 use glium;
-use ::util::Dimensions;
+use util::Dimensions;
 
 const POSTPROCESSOR_VERTEX_SHADER: &'static str = include_str!("../shaders/v_post.glsl");
 
@@ -84,7 +84,8 @@ impl PostProcessor {
             u_virtual_width: self.virtual_dimensions.x(),
             u_virtual_height: self.virtual_dimensions.y(),
         };
-        surface.draw(&self.shape,
+        surface
+            .draw(&self.shape,
                   &self.indices,
                   &self.program,
                   &uniforms,

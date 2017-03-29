@@ -40,8 +40,8 @@ fn main() {
     let sprites = sprites::SpritesData::new(virtual_dimensions);
     let mut scene = scene::Scene::new(&sprites);
     let window = create_window();
-    let mut input_poller = input::InputPoller::new(window.get_window()
-        .expect("Can't get window ref"));
+    let mut input_poller =
+        input::InputPoller::new(window.get_window().expect("Can't get window ref"));
     let mut instant = Instant::now();
     let mut renderer = display::Renderer::new(&window, &sprites, virtual_dimensions);
     let mut frame_counter = 0usize;

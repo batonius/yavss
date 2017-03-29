@@ -1,7 +1,7 @@
 use image;
 use std::collections::HashMap;
 use std::collections::hash_map::Keys;
-use ::sprites::convex;
+use sprites::convex;
 use util::{IPoint, UPoint, FPoint, FDimensions, Dimensions};
 
 const SPRITES_IMAGE: &'static [u8] = include_bytes!("../../data/sprites.png");
@@ -102,40 +102,40 @@ impl SpritesData {
             if words.len() != 6 {
                 panic!("Can't parse sprite description");
             }
-            let object = SpritesData::parse_sprite_name(words[0])
-                .expect("Can't parse sprite's name");
-            let offset_x = u32::from_str(words[1])
-                .expect("Can't parse an int from sprite description");
-            let offset_y = u32::from_str(words[2])
-                .expect("Can't parse an int from sprite description");
-            let width = u32::from_str(words[3])
-                .expect("Can't parse an int from sprite description");
-            let height = u32::from_str(words[4])
-                .expect("Can't parse an int from sprite description");
-            let frames_count = u32::from_str(words[5])
-                .expect("Can't parse an int from sprite description");
-
-            let half_pixel_size = FPoint::new(1.0, 1.0) / virtual_dimensions /
-                                  FPoint::new(2.0, 2.0);
+            let object =
+                SpritesData::parse_sprite_name(words[0]).expect("Can't parse sprite's name");
+            let offset_x =
+                u32::from_str(words[1]).expect("Can't parse an int from sprite description");
+            let offset_y =
+                u32::from_str(words[2]).expect("Can't parse an int from sprite description");
+            let width =
+                u32::from_str(words[3]).expect("Can't parse an int from sprite description");
+            let height =
+                u32::from_str(words[4]).expect("Can't parse an int from sprite description");
+            let frames_count =
+                u32::from_str(words[5]).expect("Can't parse an int from sprite description");
 
             let convex =
                 convex::calculate_convex(image_buffer, (offset_x, offset_y), (width, height));
 
             let image_size = FPoint::new(width as f32, height as f32);
 
-            let convex = convex.into_iter()
-                .map(|p| {
-                    IPoint::new(p.x() - width as i32 / 2, height as i32 / 2 - p.y()).as_f32() /
-                    virtual_dimensions + half_pixel_size
-                })
+            let convex = convex
+                .into_iter()
+                .map(|(p, d)| {
+                         IPoint::new(p.x() + d.x() - width as i32 / 2,
+                                     height as i32 / 2 - p.y() - d.y())
+                                 .as_f32() / virtual_dimensions
+                     })
                 .collect();
 
             result.insert(object,
                           SpriteData {
-                              image_offset:
-                                  FPoint::new(offset_x as f32,
-                                              (image_dimensions.y() - offset_y - height) as f32) /
-                                  image_dimensions.as_f32(),
+                              image_offset: FPoint::new(offset_x as f32,
+                                                        (image_dimensions.y() - offset_y -
+                                                         height) as
+                                                        f32) /
+                                            image_dimensions.as_f32(),
                               image_size: image_size / image_dimensions.as_f32(),
                               virtual_size: image_size / virtual_dimensions,
                               frames_count: frames_count,

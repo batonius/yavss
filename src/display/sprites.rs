@@ -1,6 +1,6 @@
 use glium;
-use ::scene::Scene;
-use ::sprites::SpriteObject;
+use scene::Scene;
+use sprites::SpriteObject;
 
 const MAX_SPRITES_COUNT: usize = 1024;
 
@@ -16,7 +16,7 @@ implement_vertex!(SpriteVertex, v_pos, v_transform, v_sprite, v_frame);
 
 impl SpriteVertex {
     fn from_scene_object(scene_object: &::scene::SceneObject) -> SpriteVertex {
-        use ::scene::{PlayerState, ObjectType};
+        use scene::{PlayerState, ObjectType};
         use cgmath;
         let (sprite, frame) = match scene_object.object_type {
             ObjectType::Player(PlayerState::Normal) => (SpriteObject::Player as u32, 0),
@@ -61,7 +61,7 @@ impl Sprites {
                                                            SPRITE_VERTEX_SHADER,
                                                            SPRITE_FRAGMENT_SHADER,
                                                            Some(SPRITE_GEOMETRY_SHADER))
-            .expect("Can't compile sprites program");
+                .expect("Can't compile sprites program");
         let mut sizes_ub =
             glium::uniforms::UniformBuffer::<[[f32; 2]; 1024]>::empty_immutable(facade)
                 .expect("Can't create uniform buffer");
@@ -76,7 +76,8 @@ impl Sprites {
             let mut offsets_map = offsets_ub.map();
             let mut dimensions_map = dimensions_ub.map();
             for sprite_object in sprites_data.sprite_objects() {
-                let sprite_data = sprites_data.sprite_data(*sprite_object)
+                let sprite_data = sprites_data
+                    .sprite_data(*sprite_object)
                     .expect("Can't get sprite data");
                 sizes_map[*sprite_object as usize] = sprite_data.virtual_size().into();
                 offsets_map[*sprite_object as usize] = sprite_data.image_offset().into();
@@ -99,11 +100,14 @@ impl Sprites {
         where S: glium::Surface,
               F: glium::backend::Facade
     {
-        let vertices: Vec<SpriteVertex> =
-            scene.objects().map(SpriteVertex::from_scene_object).collect();
+        let vertices: Vec<SpriteVertex> = scene
+            .objects()
+            .map(SpriteVertex::from_scene_object)
+            .collect();
         let vertex_buffer = glium::vertex::VertexBuffer::new(facade, &vertices)
             .expect("Can't initialize vertex buffer");
-        surface.draw(&vertex_buffer,
+        surface
+            .draw(&vertex_buffer,
                   glium::index::NoIndices(glium::index::PrimitiveType::Points),
                   &self.program,
                   &uniform!{SpritesSizes: &self.sizes_ub,

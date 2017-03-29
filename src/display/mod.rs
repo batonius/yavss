@@ -24,8 +24,8 @@ impl Renderer {
         let glium_image =
             glium::texture::RawImage2d::from_raw_rgba_reversed(sprites_data.image_buffer(),
                                                                sprites_data.image_size().into());
-        let texture = glium::texture::SrgbTexture2d::new(facade, glium_image)
-            .expect("Can't create texture");
+        let texture =
+            glium::texture::SrgbTexture2d::new(facade, glium_image).expect("Can't create texture");
         Renderer {
             background: background::Background::new(facade, sprites_data),
             sprites: sprites::Sprites::new(facade, sprites_data),
@@ -39,13 +39,16 @@ impl Renderer {
                   scene: &scene::Scene) {
         use glium::Surface;
         let mut surface = window.draw();
-        self.postprocessor.draw(|framebuffer| {
-            framebuffer.clear_color(0.5, 0.5, 0.0, 1.0);
-            self.background.render(framebuffer,
-                                   &self.sprites_texture,
-                                   scene.background_position());
-            self.sprites.render(window, framebuffer, &self.sprites_texture, scene);
-        });
+        self.postprocessor
+            .draw(|framebuffer| {
+                framebuffer.clear_color(0.5, 0.5, 0.0, 1.0);
+                self.background
+                    .render(framebuffer,
+                            &self.sprites_texture,
+                            scene.background_position());
+                self.sprites
+                    .render(window, framebuffer, &self.sprites_texture, scene);
+            });
         self.postprocessor.render(&mut surface);
         surface.finish().expect("Can't draw on a surface");
     }
