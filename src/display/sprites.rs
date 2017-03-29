@@ -28,11 +28,11 @@ impl SpriteVertex {
         let transform = cgmath::Matrix4::from(cgmath::Quaternion::from(cgmath::Euler {
                 x: cgmath::Deg(0.0),
                 y: cgmath::Deg(0.0),
-                z: -cgmath::Deg(scene_object.sprite_angle().as_deg()),
+                z: cgmath::Deg(180.0-scene_object.sprite_angle().as_deg()),
             }))
             .into();
         SpriteVertex {
-            v_pos: [scene_object.pos.x() * 2.0 - 1.0, scene_object.pos.y() * 2.0 - 1.0],
+            v_pos: [scene_object.pos.x(), scene_object.pos.y()],
             v_sprite: sprite,
             v_frame: frame,
             v_transform: transform,

@@ -37,17 +37,17 @@ impl CollisionData {
 
         let (left, top, right, bottom) = rotated_points
             .iter()
-            .fold((1.0f32, 0.0f32, 0.0f32, 1.0f32),
+            .fold((1.0f32, 1.0f32, 0.0f32, 0.0f32),
                   |(left, top, right, bottom), p| {
-                      (left.min(p.x()), top.max(p.y()), right.max(p.x()), bottom.min(p.y()))
+                      (left.min(p.x()), top.min(p.y()), right.max(p.x()), bottom.max(p.y()))
                   });
 
         CollisionData {
             hitbox: Hitbox {
                 left: -left,
-                top: top,
+                top: -top,
                 right: right,
-                bottom: -bottom,
+                bottom: bottom,
             },
             convex: rotated_points,
             range: FPoint::new(left.abs().max(right.abs()), top.abs().max(bottom.abs())),
@@ -111,8 +111,8 @@ fn hitbox_collision(a: &SceneObject, b: &SceneObject) -> bool {
     let b_hitbox = b.collision_data().hitbox();
     a.pos.x() + a_hitbox.right > b.pos.x() - b_hitbox.left &&
     b.pos.x() + b_hitbox.right > a.pos.x() - a_hitbox.left &&
-    a.pos.y() + a_hitbox.top > b.pos.y() - b_hitbox.bottom &&
-    b.pos.y() + b_hitbox.top > a.pos.y() - a_hitbox.bottom
+    a.pos.y() + a_hitbox.bottom > b.pos.y() - b_hitbox.top &&
+    b.pos.y() + b_hitbox.bottom > a.pos.y() - a_hitbox.top
 }
 
 fn convex_collision(_: &SceneObject, _: &SceneObject) -> bool {
@@ -123,7 +123,7 @@ fn segment_coords(p: FPoint) -> UPoint {
     use std::cmp::min;
     UPoint::new(min((p.x().max(0.0).min(1.0) * SEGMENTS_SIDE as f32) as u32,
                     SEGMENTS_SIDE - 1),
-                min(((1.0 - p.y()).max(0.0).min(1.0) * SEGMENTS_SIDE as f32) as u32,
+                min((p.y().max(0.0).min(1.0) * SEGMENTS_SIDE as f32) as u32,
                     SEGMENTS_SIDE - 1))
 }
 
@@ -141,9 +141,9 @@ impl SegmentsIterator {
     pub fn new(so: &SceneObject) -> SegmentsIterator {
         let hitbox = so.collision_data().hitbox();
         let from_point = segment_coords(FPoint::new(so.pos.x() - hitbox.left,
-                                                    so.pos.y() + hitbox.top));
+                                                    so.pos.y() - hitbox.top));
         let to_point = segment_coords(FPoint::new(so.pos.x() + hitbox.right,
-                                                  so.pos.y() - hitbox.bottom));
+                                                  so.pos.y() + hitbox.bottom));
         SegmentsIterator {
             from_point: from_point,
             cur_point: from_point,

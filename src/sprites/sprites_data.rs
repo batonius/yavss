@@ -124,7 +124,7 @@ impl SpritesData {
                 .into_iter()
                 .map(|(p, d)| {
                          IPoint::new(p.x() + d.x() - width as i32 / 2,
-                                     height as i32 / 2 - p.y() - d.y())
+                                     p.y() + d.y() - height as i32 / 2)
                                  .as_f32() / virtual_dimensions
                      })
                 .collect();
@@ -132,9 +132,7 @@ impl SpritesData {
             result.insert(object,
                           SpriteData {
                               image_offset: FPoint::new(offset_x as f32,
-                                                        (image_dimensions.y() - offset_y -
-                                                         height) as
-                                                        f32) /
+                                                        offset_y as f32) /
                                             image_dimensions.as_f32(),
                               image_size: image_size / image_dimensions.as_f32(),
                               virtual_size: image_size / virtual_dimensions,

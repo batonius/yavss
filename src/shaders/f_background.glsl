@@ -21,6 +21,7 @@ void main() {
       float x = st.x > 0.0 ? fract(st.x) : 1.0 - fract(-st.x);
       vec2 tex_coord = vec2(u_offset.x + i*u_dimensions.x, u_offset.y)
          + vec2(x, y) * u_dimensions;
+      tex_coord.y = 1.0 - tex_coord.y;
       out_color = texture(t_sprites, tex_coord);
       if (out_color.w == 1.0) {
          break;

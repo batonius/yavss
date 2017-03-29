@@ -88,7 +88,7 @@ impl Default for SpeedValues {
             y_speed: 0.75,
             background_speed: 0.15,
             bullet_blicking_speed: 2.0,
-            bullet_speed: 0.5,
+            bullet_speed: 0.1,
             bullet_shooting_speed: 0.2,
         }
     }
@@ -185,7 +185,7 @@ impl<'a> Scene<'a> {
         let sprite_data_cache = SpriteDataCache::new(sprites_data);
         let player_scene_object = SceneObject::new(&sprite_data_cache,
                                                    ObjectType::Player(PlayerState::Normal),
-                                                   (0.5, 0.2),
+                                                   (0.5, 0.8),
                                                    Angle::from_deg(0.0));
         Scene {
             speeds: speeds,
@@ -232,7 +232,7 @@ impl<'a> Scene<'a> {
             self.enemy_bullets
                 .push(SceneObject::new(&self.sprite_data_cache,
                                        ObjectType::EnemyBullet(0),
-                                       (self.player_scene_object.pos.x(), MAX_Y_VALUE),
+                                       (self.player_scene_object.pos.x(), MIN_Y_VALUE),
                                        Angle::from_deg(-180.0)));
             // let bullets_count = 3200;
             // for x in 0..bullets_count {
@@ -282,8 +282,8 @@ impl<'a> Scene<'a> {
             x = x.min(MAX_X_VALUE - player_virtual_hitbox.right)
                 .max(MIN_X_VALUE + player_virtual_hitbox.left);
             y += input.y_move() * self.speeds.y_speed * (duration_s as CoordValue);
-            y = y.min(MAX_Y_VALUE - player_virtual_hitbox.top)
-                .max(MIN_Y_VALUE + player_virtual_hitbox.bottom);
+            y = y.min(MAX_Y_VALUE - player_virtual_hitbox.bottom)
+                .max(MIN_Y_VALUE + player_virtual_hitbox.top);
         }
         self.player_scene_object.pos = FPoint::new(x, y);
         if x_move < -0.2 {
@@ -332,7 +332,7 @@ impl<'a> Scene<'a> {
             let distance = speed * duration_s;
             let direction_angle = object.direction_angle.as_rad();
             *object.pos.mut_x() += direction_angle.cos() * distance;
-            *object.pos.mut_y() += direction_angle.sin() * distance;
+            *object.pos.mut_y() += - direction_angle.sin() * distance;
         }
         objects.retain(|object| {
                            object.pos.x() >= MIN_X_VALUE || object.pos.x() <= MAX_X_VALUE ||

@@ -116,7 +116,7 @@ impl<'a> InputPoller<'a> {
         if self.gilrs.gamepads().count() != 0 {
             for _ in self.gilrs.poll_events() {}
             self.state.x_move = self.gilrs[0].value(gilrs::Axis::LeftStickX);
-            self.state.y_move = self.gilrs[0].value(gilrs::Axis::LeftStickY);
+            self.state.y_move = -self.gilrs[0].value(gilrs::Axis::LeftStickY);
             self.state.left_tilt = self.gilrs[0].value(gilrs::Axis::LeftZ);
             self.state.right_tilt = self.gilrs[0].value(gilrs::Axis::RightZ);
             self.state.fire_is_pressed = self.gilrs[0].is_pressed(gilrs::Button::South);
@@ -130,10 +130,10 @@ impl<'a> InputPoller<'a> {
             }
             self.state.y_move = 0.0;
             if self.state.up_is_pressed {
-                self.state.y_move += 0.5;
+                self.state.y_move -= 0.5;
             }
             if self.state.down_is_pressed {
-                self.state.y_move -= 0.5;
+                self.state.y_move += 0.5;
             }
             self.state.fire_is_pressed = self.state.fire_is_pressed;
         }

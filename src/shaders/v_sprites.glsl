@@ -12,5 +12,5 @@ void main() {
     g_transform = v_transform;
     g_sprite = v_sprite;
     g_frame = v_frame;
-    gl_Position = vec4(v_pos, 0.0, 1.0);
+    gl_Position = vec4(v_pos.x * 2.0 - 1.0, (1.0 - v_pos.y) * 2.0 - 1.0, 0.0, 1.0);
 }
