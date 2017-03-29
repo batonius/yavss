@@ -48,7 +48,7 @@ impl SceneObject {
         SceneObject {
             object_type: object_type,
             pos: pos.into(),
-            direction_angle: Angle::from_deg(sprite_angle.as_deg() + 90.0),
+            direction_angle: Angle::from_deg(sprite_angle.as_deg() - 90.0),
             to_delete: false,
             sprite_angle: sprite_angle,
             collision_data: CollisionData::new(sprites_data_cache.sprite_data(&object_type),
@@ -88,7 +88,7 @@ impl Default for SpeedValues {
             y_speed: 0.75,
             background_speed: 0.15,
             bullet_blicking_speed: 2.0,
-            bullet_speed: 0.1,
+            bullet_speed: 0.5,
             bullet_shooting_speed: 0.2,
         }
     }
@@ -294,7 +294,7 @@ impl<'a> Scene<'a> {
             self.player_scene_object.object_type = ObjectType::Player(PlayerState::Normal);
         }
 
-        let total_tilt = (input.left_tilt() - input.right_tilt()) * 90.0;
+        let total_tilt = (input.right_tilt() - input.left_tilt()) * 90.0;
         if (total_tilt - self.player_scene_object.sprite_angle().as_deg()).abs() > 1.0 {
             self.player_scene_object
                 .set_sprite_angle(&self.sprite_data_cache, Angle::from_deg(total_tilt));
@@ -332,7 +332,7 @@ impl<'a> Scene<'a> {
             let distance = speed * duration_s;
             let direction_angle = object.direction_angle.as_rad();
             *object.pos.mut_x() += direction_angle.cos() * distance;
-            *object.pos.mut_y() += - direction_angle.sin() * distance;
+            *object.pos.mut_y() += direction_angle.sin() * distance;
         }
         objects.retain(|object| {
                            object.pos.x() >= MIN_X_VALUE || object.pos.x() <= MAX_X_VALUE ||

@@ -28,7 +28,7 @@ impl SpriteVertex {
         let transform = cgmath::Matrix4::from(cgmath::Quaternion::from(cgmath::Euler {
                 x: cgmath::Deg(0.0),
                 y: cgmath::Deg(0.0),
-                z: cgmath::Deg(180.0-scene_object.sprite_angle().as_deg()),
+                z: cgmath::Deg(scene_object.sprite_angle().as_deg()),
             }))
             .into();
         SpriteVertex {
