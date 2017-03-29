@@ -313,7 +313,7 @@ impl<'a> Scene<'a> {
             bullet.object_type = match bullet.object_type {
                 ObjectType::PlayerBullet(_) => ObjectType::PlayerBullet(self.bullets_frame as u32),
                 ObjectType::EnemyBullet(_) => ObjectType::EnemyBullet(self.bullets_frame as u32),
-                object_type @ _ => object_type,
+                object_type => object_type,
             }
         }
     }

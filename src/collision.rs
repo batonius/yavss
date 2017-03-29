@@ -73,24 +73,24 @@ pub fn detect_collisions<'a, 'b, I, J, F>(objects_a: I, objects_b: J, on_collisi
     let mut bs: Vec<_> = objects_b.into_iter().collect();
 
     for (i, b) in bs.iter().enumerate() {
-        for segment in SegmentsIterator::new(&b) {
+        for segment in SegmentsIterator::new(b) {
             segments[segment as usize].push(i);
         }
     }
 
-    for a in objects_a.into_iter() {
-        for segment in SegmentsIterator::new(&a) {
+    for a in objects_a {
+        for segment in SegmentsIterator::new(a) {
             for i in &segments[segment as usize] {
                 let b = &mut bs[*i];
-                if !range_collision(&a, &b) {
+                if !range_collision(a, b) {
                     continue;
                 }
 
-                if !hitbox_collision(&a, &b) {
+                if !hitbox_collision(a, b) {
                     continue;
                 }
 
-                if !convex_collision(&a, &b) {
+                if !convex_collision(a, b) {
                     continue;
                 }
 

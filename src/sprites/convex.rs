@@ -67,7 +67,8 @@ pub fn calculate_convex<D1, D2>(image_buffer: &image::ImageBuffer<image::Rgba<u8
     if !is_points_on_line(prev_convex, convex_point, start_convex) {
         result.push((convex_point, convex_direction));
     }
-    return result;
+
+    result
 }
 
 fn is_points_on_line<P1, P2, P3>(a: P1, b: P2, c: P3) -> bool
@@ -227,6 +228,6 @@ impl Iterator for LineIterator {
 
         self.advance();
 
-        return result;
+        result
     }
 }
