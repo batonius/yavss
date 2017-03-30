@@ -17,6 +17,7 @@ pub struct Hitbox {
 pub struct CollisionData {
     hitbox: Hitbox,
     convex: Vec<FPoint>,
+    normals: Vec<Angle>,
     range: FPoint,
 }
 
@@ -41,6 +42,7 @@ impl CollisionData {
                   |(left, top, right, bottom), p| {
                       (left.min(p.x()), top.min(p.y()), right.max(p.x()), bottom.max(p.y()))
                   });
+        let normals = CollisionData::compute_normals(&rotated_points);
 
         CollisionData {
             hitbox: Hitbox {
@@ -51,7 +53,28 @@ impl CollisionData {
             },
             convex: rotated_points,
             range: FPoint::new(left.abs().max(right.abs()), top.abs().max(bottom.abs())),
+            normals: normals,
         }
+    }
+
+    fn compute_normals(convex: &Vec<FPoint>) -> Vec<Angle> {
+        use std::f32::consts;
+
+        let mut result = vec![];
+        if convex.is_empty() || convex.len() == 1 {
+            return result;
+        }
+
+        let mut prev_point = convex[0];
+        for &point in &convex[1..] {
+            let delta = point - prev_point;
+            result.push(Angle::from_rad(delta.y().atan2(delta.x()) - consts::FRAC_PI_2));
+            prev_point = point;
+        }
+
+        let delta = convex[0] - prev_point;
+        result.push(Angle::from_rad(delta.y().atan2(delta.x()) - consts::FRAC_PI_2));
+        result
     }
 
     pub fn hitbox(&self) -> &Hitbox {
@@ -115,8 +138,36 @@ fn hitbox_collision(a: &SceneObject, b: &SceneObject) -> bool {
     b.pos.y() + b_hitbox.bottom > a.pos.y() - a_hitbox.top
 }
 
-fn convex_collision(_: &SceneObject, _: &SceneObject) -> bool {
+fn convex_collision(a: &SceneObject, b: &SceneObject) -> bool {
+    for angle in (&a.collision_data().normals)
+            .into_iter()
+            .chain(&b.collision_data().normals) {
+        let (a_min, a_max) = a.collision_data()
+            .convex
+            .iter()
+            .fold((3.0f32, -3.0f32), |(min_p, max_p), p| {
+                let proj = project_point(a.pos + *p, *angle);
+                (min_p.min(proj), max_p.max(proj))
+            });
+        let (b_min, b_max) = b.collision_data()
+            .convex
+            .iter()
+            .fold((3.0f32, -3.0f32), |(min_p, max_p), p| {
+                let proj = project_point(b.pos + *p, *angle);
+                (min_p.min(proj), max_p.max(proj))
+            });
+
+        if a_max < b_min || b_max < a_min {
+            return false;
+        }
+    }
     true
+}
+
+fn project_point(p: FPoint, normal: Angle) -> f32 {
+    let hypotenuse = (p.x() * p.x() + p.y() * p.y()).sqrt();
+    let point_angle = p.y().atan2(p.x());
+    hypotenuse * (normal.as_rad() - point_angle).sin()
 }
 
 fn segment_coords(p: FPoint) -> UPoint {
