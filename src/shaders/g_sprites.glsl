@@ -5,6 +5,7 @@ layout (triangle_strip, max_vertices = 4) out;
 in mat4 g_transform[];
 flat in int g_sprite[];
 flat in int g_frame[];
+flat in vec2 g_scale[];
 
 out vec2 f_tex_pos;
 flat out int f_sprite;
@@ -15,8 +16,8 @@ uniform SpritesSizes {
 };
 
 void main() {
-    float half_width = u_sprites_sizes[g_sprite[0]].x;
-    float half_height = u_sprites_sizes[g_sprite[0]].y;
+    float half_width = u_sprites_sizes[g_sprite[0]].x * g_scale[0].x;
+    float half_height = u_sprites_sizes[g_sprite[0]].y * g_scale[0].y;
     f_tex_pos = vec2(0.0, 1.0);
     f_sprite = g_sprite[0];
     f_frame = g_frame[0];

@@ -32,18 +32,22 @@ pub struct SceneObject {
     pub pos: FPoint,
     pub direction_angle: Angle,
     pub to_delete: bool,
-    sprite_angle: Angle,
     collision_data: CollisionData,
+    sprite_angle: Angle,
+    sprite_scale: FPoint,
 }
 
 impl SceneObject {
-    pub fn new<P>(sprites_data_cache: &SpriteDataCache,
-                  object_type: ObjectType,
-                  pos: P,
-                  sprite_angle: Angle)
-                  -> SceneObject
-        where P: Into<FPoint>
+    pub fn new<P1, P2>(sprites_data_cache: &SpriteDataCache,
+                       object_type: ObjectType,
+                       pos: P1,
+                       sprite_angle: Angle,
+                       sprite_scale: P2)
+                       -> SceneObject
+        where P1: Into<FPoint>,
+              P2: Into<FPoint>
     {
+        let sprite_scale = sprite_scale.into();
         SceneObject {
             object_type: object_type,
             pos: pos.into(),
@@ -51,7 +55,9 @@ impl SceneObject {
             to_delete: false,
             sprite_angle: sprite_angle,
             collision_data: CollisionData::new(sprites_data_cache.sprite_data(&object_type),
-                                               sprite_angle),
+                                               sprite_angle,
+                                               sprite_scale),
+            sprite_scale: sprite_scale,
         }
     }
 
@@ -63,10 +69,25 @@ impl SceneObject {
         &self.collision_data
     }
 
+    pub fn sprite_scale(&self) -> &FPoint {
+        &self.sprite_scale
+    }
+
     pub fn set_sprite_angle(&mut self, sprites_data_cache: &SpriteDataCache, sprite_angle: Angle) {
         self.collision_data = CollisionData::new(sprites_data_cache.sprite_data(&self.object_type),
-                                                 sprite_angle);
+                                                 sprite_angle,
+                                                 self.sprite_scale);
         self.sprite_angle = sprite_angle;
+    }
+
+    pub fn set_sprite_scale<P>(&mut self, sprites_data_cache: &SpriteDataCache, sprite_scale: P)
+        where P: Into<FPoint>
+    {
+        let sprite_scale = sprite_scale.into();
+        self.collision_data = CollisionData::new(sprites_data_cache.sprite_data(&self.object_type),
+                                                 self.sprite_angle,
+                                                 sprite_scale);
+        self.sprite_scale = sprite_scale;
     }
 }
 
@@ -186,7 +207,8 @@ impl<'a> Scene<'a> {
         let player_scene_object = SceneObject::new(&sprite_data_cache,
                                                    ObjectType::Player(PlayerState::Normal),
                                                    (0.5, 0.8),
-                                                   Angle::from_deg(0.0));
+                                                   Angle::from_deg(0.0),
+                                                   (1.0, 1.0));
         Scene {
             speeds: speeds,
             background_position: 0.0,
@@ -234,7 +256,8 @@ impl<'a> Scene<'a> {
                 .push(SceneObject::new(&self.sprite_data_cache,
                                        ObjectType::EnemyBullet(0),
                                        (self.player_scene_object.pos.x(), MIN_Y_VALUE),
-                                       Angle::from_deg(-180.0)));
+                                       Angle::from_deg(-180.0),
+                                       (1.0, 1.0)));
             // let bullets_count = 3200;
             // for x in 0..bullets_count {
             //     self.enemy_bullets.push(SceneObject::new(&self.sprite_data_cache,
@@ -260,17 +283,20 @@ impl<'a> Scene<'a> {
                 .push(SceneObject::new(&self.sprite_data_cache,
                                        ObjectType::PlayerBullet(0),
                                        self.player_scene_object.pos,
-                                       adjusted_angle));
+                                       adjusted_angle,
+                                       (2.0, 2.0)));
             self.player_bullets
                 .push(SceneObject::new(&self.sprite_data_cache,
                                        ObjectType::PlayerBullet(0),
                                        self.player_scene_object.pos,
-                                       adjusted_angle.add_deg(20.0)));
+                                       adjusted_angle.add_deg(20.0),
+                                       (1.0, 1.0)));
             self.player_bullets
                 .push(SceneObject::new(&self.sprite_data_cache,
                                        ObjectType::PlayerBullet(0),
                                        self.player_scene_object.pos,
-                                       adjusted_angle.add_deg(-20.0)));
+                                       adjusted_angle.add_deg(-20.0),
+                                       (1.0, 1.0)));
         }
     }
 
@@ -308,6 +334,7 @@ impl<'a> Scene<'a> {
 
     fn blink_bullet(&mut self, duration_s: f32) {
         self.bullets_frame += self.speeds.bullet_blicking_speed * (duration_s as f32);
+        let scaling = 1.0 + 0.3 * (self.bullets_frame as u32 % 2) as f32;
         let iter = (&mut self.player_bullets).iter_mut();
         let iter = iter.chain((&mut self.enemy_bullets).iter_mut());
         for bullet in iter {
@@ -315,7 +342,8 @@ impl<'a> Scene<'a> {
                 ObjectType::PlayerBullet(_) => ObjectType::PlayerBullet(self.bullets_frame as u32),
                 ObjectType::EnemyBullet(_) => ObjectType::EnemyBullet(self.bullets_frame as u32),
                 object_type => object_type,
-            }
+            };
+            bullet.set_sprite_scale(&self.sprite_data_cache, (scaling, scaling));
         }
     }
 

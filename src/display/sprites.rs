@@ -10,9 +10,10 @@ struct SpriteVertex {
     v_transform: [[f32; 4]; 4],
     v_sprite: u32,
     v_frame: u32,
+    v_scale: [f32; 2],
 }
 
-implement_vertex!(SpriteVertex, v_pos, v_transform, v_sprite, v_frame);
+implement_vertex!(SpriteVertex, v_pos, v_transform, v_sprite, v_frame, v_scale);
 
 impl SpriteVertex {
     fn from_scene_object(scene_object: &::scene::SceneObject) -> SpriteVertex {
@@ -36,6 +37,7 @@ impl SpriteVertex {
             v_sprite: sprite,
             v_frame: frame,
             v_transform: transform,
+            v_scale: scene_object.sprite_scale().into(),
         }
     }
 }

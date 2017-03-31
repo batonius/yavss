@@ -1,5 +1,5 @@
 use std::f32;
-use std::ops::{Add, Div, Sub, AddAssign};
+use std::ops::{Mul, Add, Div, Sub, AddAssign};
 use std::convert::From;
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Eq, Ord)]
@@ -133,6 +133,19 @@ impl<T> Div for Point<T>
     }
 }
 
+impl<T> Mul for Point<T>
+    where T: Mul
+{
+    type Output = Point<<T as Mul<T>>::Output>;
+
+    fn mul(self, rhs: Point<T>) -> Self::Output {
+        Point {
+            a: self.a * rhs.a,
+            b: self.b * rhs.b,
+        }
+    }
+}
+
 impl<T> From<(T, T)> for Point<T> {
     fn from((a, b): (T, T)) -> Point<T> {
         Point { a: a, b: b }
@@ -146,6 +159,22 @@ impl<T> Into<(T, T)> for Point<T> {
 }
 
 impl<T> Into<[T; 2]> for Point<T> {
+    fn into(self) -> [T; 2] {
+        [self.a, self.b]
+    }
+}
+
+impl<'a, T> Into<(T, T)> for &'a Point<T>
+    where T: Copy
+{
+    fn into(self) -> (T, T) {
+        (self.a, self.b)
+    }
+}
+
+impl<'a, T> Into<[T; 2]> for &'a Point<T>
+    where T: Copy
+{
     fn into(self) -> [T; 2] {
         [self.a, self.b]
     }

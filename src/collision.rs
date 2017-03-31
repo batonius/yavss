@@ -22,17 +22,21 @@ pub struct CollisionData {
 }
 
 impl CollisionData {
-    pub fn new(sprite_data: &SpriteData, sprite_angle: Angle) -> CollisionData {
+    pub fn new<P>(sprite_data: &SpriteData, sprite_angle: Angle, sprite_scale: P) -> CollisionData
+        where P: Into<FPoint>
+    {
 
         let angle_sin = sprite_angle.as_rad().sin();
         let angle_cos = sprite_angle.as_rad().cos();
+        let sprite_scale = sprite_scale.into();
 
         let rotated_points = sprite_data
             .convex()
             .iter()
-            .map(|p| {
-                     FPoint::new(p.x() * angle_cos - p.y() * angle_sin,
-                                 p.x() * angle_sin + p.y() * angle_cos)
+            .map(|&p| {
+                     let scaled_p = p * sprite_scale;
+                     FPoint::new(scaled_p.x() * angle_cos - scaled_p.y() * angle_sin,
+                                 scaled_p.x() * angle_sin + scaled_p.y() * angle_cos)
                  })
             .collect::<Vec<_>>();
 
