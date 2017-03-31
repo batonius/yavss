@@ -250,14 +250,14 @@ impl<'a> Scene<'a> {
 
     fn add_bullets(&mut self, duration_s: f32) {
         self.new_bullet_timeout += duration_s;
-        if self.new_bullet_timeout >= self.speeds.bullet_shooting_speed * 3.0 {
+        if self.new_bullet_timeout >= self.speeds.bullet_shooting_speed * 2.0 {
             self.new_bullet_timeout = 0.0;
             self.enemy_bullets
                 .push(SceneObject::new(&self.sprite_data_cache,
                                        ObjectType::EnemyBullet(0),
                                        (self.player_scene_object.pos.x(), MIN_Y_VALUE),
                                        Angle::from_deg(-180.0),
-                                       (1.0, 1.0)));
+                                       (2.0, 2.0)));
             // let bullets_count = 3200;
             // for x in 0..bullets_count {
             //     self.enemy_bullets.push(SceneObject::new(&self.sprite_data_cache,
@@ -321,7 +321,9 @@ impl<'a> Scene<'a> {
             self.player_scene_object.object_type = ObjectType::Player(PlayerState::Normal);
         }
 
-        let total_tilt = (input.right_tilt() - input.left_tilt()) * 90.0;
+        let total_tilt = -input.left_tilt() * 90.0;
+        let scale = 1.0 + 2.0 * input.right_tilt();
+        self.player_scene_object.set_sprite_scale(&self.sprite_data_cache, (scale, scale));
         if (total_tilt - self.player_scene_object.sprite_angle().as_deg()).abs() > 1.0 {
             self.player_scene_object
                 .set_sprite_angle(&self.sprite_data_cache, Angle::from_deg(total_tilt));
@@ -334,7 +336,6 @@ impl<'a> Scene<'a> {
 
     fn blink_bullet(&mut self, duration_s: f32) {
         self.bullets_frame += self.speeds.bullet_blicking_speed * (duration_s as f32);
-        let scaling = 1.0 + 0.3 * (self.bullets_frame as u32 % 2) as f32;
         let iter = (&mut self.player_bullets).iter_mut();
         let iter = iter.chain((&mut self.enemy_bullets).iter_mut());
         for bullet in iter {
@@ -343,7 +344,6 @@ impl<'a> Scene<'a> {
                 ObjectType::EnemyBullet(_) => ObjectType::EnemyBullet(self.bullets_frame as u32),
                 object_type => object_type,
             };
-            bullet.set_sprite_scale(&self.sprite_data_cache, (scaling, scaling));
         }
     }
 
