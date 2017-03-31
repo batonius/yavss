@@ -51,6 +51,7 @@ pub struct SpritesData {
     image_buffer: Vec<u8>,
     image_size: Dimensions,
     sprites: HashMap<SpriteObject, SpriteData>,
+    virtual_dimensions: Dimensions,
 }
 
 impl SpritesData {
@@ -62,12 +63,14 @@ impl SpritesData {
               D2: Into<Dimensions>
     {
         let image_dimensions = image_dimensions.into();
+        let virtual_dimensions = virtual_dimensions.into();
         let sprites =
             SpritesData::parse_sprites_descr(&image_buffer, virtual_dimensions, image_dimensions);
         SpritesData {
             image_buffer: image_buffer.into_raw(),
             image_size: image_dimensions,
             sprites: sprites,
+            virtual_dimensions: virtual_dimensions,
         }
     }
 
@@ -131,8 +134,7 @@ impl SpritesData {
 
             result.insert(object,
                           SpriteData {
-                              image_offset: FPoint::new(offset_x as f32,
-                                                        offset_y as f32) /
+                              image_offset: FPoint::new(offset_x as f32, offset_y as f32) /
                                             image_dimensions.as_f32(),
                               image_size: image_size / image_dimensions.as_f32(),
                               virtual_size: image_size / virtual_dimensions,
@@ -172,5 +174,9 @@ impl SpritesData {
 
     pub fn sprite_objects(&self) -> Keys<SpriteObject, SpriteData> {
         self.sprites.keys()
+    }
+
+    pub fn virtual_dimensions(&self) -> Dimensions {
+        self.virtual_dimensions
     }
 }

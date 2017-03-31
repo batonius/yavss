@@ -1,6 +1,6 @@
 use scene::SceneObject;
 use sprites::SpriteData;
-use util::{UPoint, FPoint, Angle};
+use util::{UPoint, FPoint, Angle, Dimensions};
 
 const SEGMENTS_SIDE: u32 = 10;
 const SEGMENTS_COUNT: u32 = SEGMENTS_SIDE * SEGMENTS_SIDE;
@@ -82,86 +82,99 @@ impl CollisionData {
     }
 }
 
-pub fn detect_collisions<'a, 'b, I, J, F>(objects_a: I, objects_b: J, on_collision: F)
-    where I: IntoIterator<Item = &'a mut SceneObject>,
-          J: IntoIterator<Item = &'b mut SceneObject>,
-          F: Fn(&mut SceneObject, &mut SceneObject)
-{
-    let mut segments: Vec<Vec<usize>> = Vec::with_capacity(SEGMENTS_COUNT as usize);
+#[derive(Copy, Clone, Debug)]
+pub struct CollisionDetector {
+    allowance: FPoint,
+}
 
-    for _ in 0..SEGMENTS_COUNT {
-        segments.push(vec![]);
+impl CollisionDetector {
+    pub fn new(virtual_dimensions: Dimensions) -> CollisionDetector {
+        CollisionDetector { allowance: FPoint::new(0.25, 0.25) / virtual_dimensions.as_f32() }
     }
 
-    let mut bs: Vec<_> = objects_b.into_iter().collect();
+    pub fn detect_collisions<'a, 'b, I, J, F>(&self, objects_a: I, objects_b: J, on_collision: F)
+        where I: IntoIterator<Item = &'a mut SceneObject>,
+              J: IntoIterator<Item = &'b mut SceneObject>,
+              F: Fn(&mut SceneObject, &mut SceneObject)
+    {
+        let mut segments: Vec<Vec<usize>> = Vec::with_capacity(SEGMENTS_COUNT as usize);
 
-    for (i, b) in bs.iter().enumerate() {
-        for segment in SegmentsIterator::new(b) {
-            segments[segment as usize].push(i);
+        for _ in 0..SEGMENTS_COUNT {
+            segments.push(vec![]);
         }
-    }
 
-    for a in objects_a {
-        for segment in SegmentsIterator::new(a) {
-            for i in &segments[segment as usize] {
-                let b = &mut bs[*i];
-                if !range_collision(a, b) {
-                    continue;
+        let mut bs: Vec<_> = objects_b.into_iter().collect();
+
+        for (i, b) in bs.iter().enumerate() {
+            for segment in SegmentsIterator::new(b) {
+                segments[segment as usize].push(i);
+            }
+        }
+
+        for a in objects_a {
+            for segment in SegmentsIterator::new(a) {
+                for i in &segments[segment as usize] {
+                    let b = &mut bs[*i];
+                    if !self.range_collision(a, b) {
+                        continue;
+                    }
+
+                    if !self.hitbox_collision(a, b) {
+                        continue;
+                    }
+
+                    if !self.convex_collision(a, b) {
+                        continue;
+                    }
+
+                    on_collision(a, b);
                 }
-
-                if !hitbox_collision(a, b) {
-                    continue;
-                }
-
-                if !convex_collision(a, b) {
-                    continue;
-                }
-
-                on_collision(a, b);
             }
         }
     }
-}
 
-fn range_collision(a: &SceneObject, b: &SceneObject) -> bool {
-    let distance = a.pos - b.pos;
-    distance.x().abs() < (a.collision_data().range.x() + b.collision_data().range.x()) &&
-    distance.y().abs() < (a.collision_data().range.y() + b.collision_data().range.y())
-}
-
-fn hitbox_collision(a: &SceneObject, b: &SceneObject) -> bool {
-    let a_hitbox = a.collision_data().hitbox();
-    let b_hitbox = b.collision_data().hitbox();
-    a.pos.x() + a_hitbox.right > b.pos.x() - b_hitbox.left &&
-    b.pos.x() + b_hitbox.right > a.pos.x() - a_hitbox.left &&
-    a.pos.y() + a_hitbox.bottom > b.pos.y() - b_hitbox.top &&
-    b.pos.y() + b_hitbox.bottom > a.pos.y() - a_hitbox.top
-}
-
-fn convex_collision(a: &SceneObject, b: &SceneObject) -> bool {
-    for angle in (&a.collision_data().normals)
-            .into_iter()
-            .chain(&b.collision_data().normals) {
-        let (a_min, a_max) = a.collision_data()
-            .convex
-            .iter()
-            .fold((3.0f32, -3.0f32), |(min_p, max_p), p| {
-                let proj = project_point(a.pos + *p, *angle);
-                (min_p.min(proj), max_p.max(proj))
-            });
-        let (b_min, b_max) = b.collision_data()
-            .convex
-            .iter()
-            .fold((3.0f32, -3.0f32), |(min_p, max_p), p| {
-                let proj = project_point(b.pos + *p, *angle);
-                (min_p.min(proj), max_p.max(proj))
-            });
-
-        if a_max < b_min || b_max < a_min {
-            return false;
-        }
+    fn range_collision(&self, a: &SceneObject, b: &SceneObject) -> bool {
+        let distance = a.pos - b.pos;
+        distance.x().abs() < (a.collision_data().range.x() + b.collision_data().range.x()) &&
+        distance.y().abs() < (a.collision_data().range.y() + b.collision_data().range.y())
     }
-    true
+
+    fn hitbox_collision(&self, a: &SceneObject, b: &SceneObject) -> bool {
+        let a_hitbox = a.collision_data().hitbox();
+        let b_hitbox = b.collision_data().hitbox();
+        a.pos.x() + a_hitbox.right > b.pos.x() - b_hitbox.left &&
+        b.pos.x() + b_hitbox.right > a.pos.x() - a_hitbox.left &&
+        a.pos.y() + a_hitbox.bottom > b.pos.y() - b_hitbox.top &&
+        b.pos.y() + b_hitbox.bottom > a.pos.y() - a_hitbox.top
+    }
+
+    fn convex_collision(&self, a: &SceneObject, b: &SceneObject) -> bool {
+
+        for angle in (&a.collision_data().normals)
+                .into_iter()
+                .chain(&b.collision_data().normals) {
+            let (a_min, a_max) = a.collision_data()
+                .convex
+                .iter()
+                .fold((3.0f32, -3.0f32), |(min_p, max_p), p| {
+                    let proj = project_point(a.pos + *p, *angle);
+                    (min_p.min(proj), max_p.max(proj))
+                });
+            let (b_min, b_max) = b.collision_data()
+                .convex
+                .iter()
+                .fold((3.0f32, -3.0f32), |(min_p, max_p), p| {
+                    let proj = project_point(b.pos + *p, *angle);
+                    (min_p.min(proj), max_p.max(proj))
+                });
+            let projected_allowance = project_point(self.allowance, *angle);
+
+            if a_max - projected_allowance < b_min || b_max - projected_allowance < a_min {
+                return false;
+            }
+        }
+        true
+    }
 }
 
 fn project_point(p: FPoint, normal: Angle) -> f32 {
@@ -181,6 +194,7 @@ fn segment_coords(p: FPoint) -> UPoint {
 fn segment_no(p: UPoint) -> u32 {
     p.y() * SEGMENTS_SIDE + p.x()
 }
+
 
 struct SegmentsIterator {
     from_point: UPoint,

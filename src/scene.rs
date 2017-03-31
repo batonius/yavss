@@ -1,7 +1,7 @@
 use std::time::Duration;
 use input::InputPoller;
 use sprites::{SpriteObject, SpriteData, SpritesData};
-use collision::{detect_collisions, CollisionData};
+use collision::{CollisionDetector, CollisionData};
 use util::{Angle, FPoint};
 
 type CoordValue = f32;
@@ -32,7 +32,6 @@ pub struct SceneObject {
     pub pos: FPoint,
     pub direction_angle: Angle,
     pub to_delete: bool,
-
     sprite_angle: Angle,
     collision_data: CollisionData,
 }
@@ -176,6 +175,7 @@ pub struct Scene<'a> {
     enemy_bullets: Vec<SceneObject>,
     new_bullet_timeout: f32,
     sprite_data_cache: SpriteDataCache<'a>,
+    collision_detector: CollisionDetector,
 }
 
 impl<'a> Scene<'a> {
@@ -198,6 +198,7 @@ impl<'a> Scene<'a> {
             enemy_bullets: vec![],
             new_bullet_timeout: bullets_timeout,
             sprite_data_cache: sprite_data_cache,
+            collision_detector: CollisionDetector::new(sprites_data.virtual_dimensions()),
         }
     }
 
@@ -344,13 +345,15 @@ impl<'a> Scene<'a> {
     fn detect_collisions(&mut self) {
         use std::iter;
 
-        detect_collisions(&mut self.enemy_bullets,
-                          iter::once(&mut self.player_scene_object),
-                          |a, _| { a.to_delete = true; });
-        detect_collisions(&mut self.enemy_bullets, &mut self.player_bullets, |a, b| {
-            a.to_delete = true;
-            b.to_delete = true;
-        });
+        self.collision_detector
+            .detect_collisions(&mut self.enemy_bullets,
+                               iter::once(&mut self.player_scene_object),
+                               |a, _| { a.to_delete = true; });
+        self.collision_detector
+            .detect_collisions(&mut self.enemy_bullets, &mut self.player_bullets, |a, b| {
+                a.to_delete = true;
+                b.to_delete = true;
+            });
         self.enemy_bullets.retain(|bullet| !bullet.to_delete);
         self.player_bullets.retain(|bullet| !bullet.to_delete);
     }
